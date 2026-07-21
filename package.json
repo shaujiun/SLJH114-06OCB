@@ -1,0 +1,32 @@
+{
+  "name": "806-online-contact-book",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "backup:supabase": "node scripts/backup-shared-supabase.mjs",
+    "bootstrap:admin": "node scripts/bootstrap-first-admin.mjs",
+    "migration:build": "node scripts/build-contact-book-migration.mjs",
+    "migration:student-settings": "node scripts/build-student-settings-migration.mjs",
+    "smoke:functions": "node scripts/smoke-edge-functions.mjs",
+    "verify:supabase": "node scripts/verify-shared-supabase.mjs",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/iansui": "^5.3.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "read-excel-file": "^7.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "supabase": "^2.109.1",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4"
+  }
+}
