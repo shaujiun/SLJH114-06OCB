@@ -18,7 +18,7 @@
 - 已完成班級科目新增、啟用／停用及排序。
 - Supabase 遷移與 Edge Functions 已套用至共用雲端專案。
 - 已完成 GitHub Pages 初次發布，正式角色與手機外部網路驗收進行中。
-- 正式網址：https://shaujiun.github.io/806-online-contact-book/
+- 正式網址：https://shaujiun.github.io/SLJH114-06OCB/
 
 ## 已確認技術架構
 

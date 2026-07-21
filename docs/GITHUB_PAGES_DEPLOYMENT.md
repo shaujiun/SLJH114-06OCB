@@ -5,7 +5,7 @@
 ## 一、建立 GitHub 倉庫
 
 1. 登入 GitHub，建立一個新的私人倉庫。私人倉庫使用 GitHub Pages 可能需要付費方案，實際資格以 GitHub 帳號顯示為準。
-2. 建議倉庫名稱使用 `806-online-contact-book`。
+2. 正式倉庫名稱使用 `SLJH114-06OCB`。
 3. 建立時不要另外加入 README、`.gitignore` 或授權檔，以免與本機專案衝突。
 4. 將 GitHub 顯示的倉庫網址保存下來，之後再由 Codex 協助連接與推送。
 
