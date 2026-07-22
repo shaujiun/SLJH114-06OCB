@@ -58,6 +58,12 @@ export function mapStudentAssignmentRow(row) {
   }
 }
 
+export function filterVisibleStudentAssignments(assignments, academicTermId) {
+  return (assignments || []).filter((item) => (
+    item.academicTermId === academicTermId && !item.submittedAt
+  ))
+}
+
 export function groupStudentAssignments(assignments) {
   const groups = new Map()
   for (const assignment of assignments || []) {
@@ -190,6 +196,7 @@ export async function loadStudentDashboard() {
     termsResult,
     groupsResult,
     assignmentsResult,
+    recipientsResult,
     exceptionsResult,
     helpersResult,
     classSubjectsResult,
@@ -211,6 +218,10 @@ export async function loadStudentDashboard() {
       .select('id,academic_term_id,assignment_date,content,due_at,target_type,target_group_code,published_by_display_name,class_subjects!inner(subjects!inner(code,name))')
       .eq('is_active', true)
       .order('due_at'),
+    client
+      .from('assignment_recipients')
+      .select('assignment_id,submitted_at')
+      .eq('student_id', student.id),
     client
       .from('submission_exceptions')
       .select('id,assignment_id,initial_reason,current_reason,workflow_state,follow_up_due_at,counts_as_missing,counts_as_late,resolved_at,hide_after,created_at')
@@ -243,11 +254,22 @@ export async function loadStudentDashboard() {
       subjectName: subject?.name,
     }
   })
+  const recipientRows = requireData(
+    recipientsResult.data,
+    recipientsResult.error,
+    '無法讀取個人作業繳交狀態，請重新整理後再試。',
+  )
+  const submittedAtByAssignmentId = new Map(
+    recipientRows.map((row) => [row.assignment_id, row.submitted_at]),
+  )
   const assignments = requireData(
     assignmentsResult.data,
     assignmentsResult.error,
     '無法讀取個人作業，請重新整理。',
-  ).map(mapStudentAssignmentRow)
+  ).map((row) => ({
+    ...mapStudentAssignmentRow(row),
+    submittedAt: submittedAtByAssignmentId.get(row.id) || null,
+  }))
   const exceptions = requireData(
     exceptionsResult.data,
     exceptionsResult.error,

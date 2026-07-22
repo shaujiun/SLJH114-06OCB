@@ -211,6 +211,7 @@ create table if not exists public.assignment_recipients (
   student_id uuid not null references public.students(id) on delete cascade,
   audience_source text not null check (audience_source in ('common', 'group_snapshot', 'manual_adjustment')),
   group_code_snapshot citext,
+  submitted_at timestamptz,
   created_at timestamptz not null default now(),
   primary key (assignment_id, student_id)
 );
@@ -1122,6 +1123,18 @@ begin
         last_updated_by = auth.uid();
   end if;
 
+  update public.assignment_recipients recipient
+  set submitted_at = case
+    when exists (
+      select 1
+      from jsonb_to_recordset(coalesce(p_exceptions, '[]'::jsonb))
+        as x(student_id uuid, reason text, follow_up_due_at timestamptz)
+      where x.student_id = recipient.student_id
+    ) then null
+    else now()
+  end
+  where recipient.assignment_id = p_assignment_id;
+
   select count(*) into open_count
   from public.submission_exceptions se
   where se.assignment_id = p_assignment_id and se.workflow_state = 'open';
@@ -1272,7 +1285,7 @@ begin
 
   if new.workflow_state in ('made_up', 'waived') then
     new.resolved_at = coalesce(new.resolved_at, now());
-    new.hide_after = coalesce(new.hide_after, new.resolved_at + interval '3 days');
+    new.hide_after = coalesce(new.hide_after, new.resolved_at + interval '1 day');
   else
     new.resolved_at = null;
     new.hide_after = null;

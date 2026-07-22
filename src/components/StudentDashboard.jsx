@@ -19,6 +19,7 @@ import {
 import {
   buildExceptionSummary,
   buildPeriodExceptionSummaries,
+  filterVisibleStudentAssignments,
   getEligibleHelperTermIds,
   groupStudentAssignments,
   loadStudentDashboard,
@@ -149,7 +150,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     [dashboard, termId],
   )
   const assignments = useMemo(
-    () => dashboard?.assignments.filter((item) => item.academicTermId === termId) || [],
+    () => filterVisibleStudentAssignments(dashboard?.assignments, termId),
     [dashboard, termId],
   )
   const assignmentGroups = useMemo(

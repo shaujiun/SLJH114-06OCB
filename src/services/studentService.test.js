@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildExceptionSummary,
   buildPeriodExceptionSummaries,
+  filterVisibleStudentAssignments,
   getHelperSubjectIds,
   getHelperSubjectPermissions,
   getEligibleHelperTermIds,
@@ -44,10 +45,22 @@ describe('學生聯絡簿資料', () => {
     expect(groups[1].assignments.map((item) => item.id)).toEqual(['english-b', 'math-b'])
   })
 
-  it('補交紀錄三天內仍顯示，累積遲交不消失', () => {
+  it('學生端只顯示尚未繳交且屬於目前學期的作業', () => {
+    const assignments = [
+      { id: 'open-current', academicTermId: 'term-1', submittedAt: null },
+      { id: 'submitted-current', academicTermId: 'term-1', submittedAt: '2026-08-11T08:00:00Z' },
+      { id: 'open-other-term', academicTermId: 'term-2', submittedAt: null },
+    ]
+    expect(filterVisibleStudentAssignments(assignments, 'term-1').map((item) => item.id))
+      .toEqual(['open-current'])
+  })
+
+  it('補交提醒在保留期限內顯示，期限後消失，累積遲交不消失', () => {
     const future = new Date(Date.now() + 60_000).toISOString()
+    const past = new Date(Date.now() - 60_000).toISOString()
     const summary = buildExceptionSummary([
       { initialReason: 'late', workflowState: 'made_up', hideAfter: future, countsAsLate: true },
+      { initialReason: 'incomplete', workflowState: 'made_up', hideAfter: past, countsAsLate: false },
       { initialReason: 'not_brought', workflowState: 'open', hideAfter: null, countsAsLate: false },
     ])
     expect(summary.visible).toHaveLength(2)
