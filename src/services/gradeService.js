@@ -214,6 +214,20 @@ function parseDetailedSheet(rows, { sheetName, exam, students, resultMap, unmatc
     result.weightedTotalScore = numberOrNull(headerValue(row, headers, '加權總分', '總分'))
     result.classRank = integerOrNull(headerValue(row, headers, '班排', '班排名'))
     result.schoolRank = integerOrNull(headerValue(row, headers, '校排', '校排名'))
+    const independentlyRecordedScores = [
+      result.chineseScore,
+      result.compositionScore,
+      result.englishWrittenScore,
+      result.englishListeningScore,
+      result.mathScore,
+      result.scienceScore,
+      result.historyScore,
+      result.geographyScore,
+      result.civicsScore,
+    ]
+    const hasRecordedScore = independentlyRecordedScores.some((score) => score !== null)
+      || (result.englishScore !== null && result.englishScore !== 0)
+    if (!hasRecordedScore) return
     addResult(resultMap, exam, result)
   })
 }

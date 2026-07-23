@@ -66,6 +66,14 @@ describe('成績 Excel 解析', () => {
     expect(parsed.exams).toHaveLength(0)
     expect(parsed.unmatched).toEqual([expect.objectContaining({ seatNumber: 20, fullName: '尚未建立學生' })])
   })
+
+  it('略過只有公式零值與排名的空白成績範本', () => {
+    const sheets = new Map([['114-1二段', [
+      [null, '座號', '姓名', '國文', '作文', '英語', '英聽', '英總', '數學', '自然', '歷史', '地理', '公民', '總分', '班排名'],
+      [null, 1, '余承澤', null, null, null, null, 0, null, null, null, null, null, 0, 1],
+    ]]])
+    expect(() => parseGradeWorkbookRows({ sheets, students })).toThrow('找不到可辨識的段考成績')
+  })
 })
 
 describe('個人成績分析', () => {

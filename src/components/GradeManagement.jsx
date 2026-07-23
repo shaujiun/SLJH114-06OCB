@@ -148,7 +148,7 @@ export default function GradeManagement({ dashboard, onNotice }) {
           <label className="grade-file-control"><span>成績檔案</span><input key={fileInputKey} type="file" accept=".xlsx" onChange={(event) => { setFile(event.target.files?.[0] || null); setPreview(null) }} /></label>
           <button type="button" className="approve-button" disabled={!file || parsing} onClick={analyzeFile}><FileSpreadsheet />{parsing ? '分析中…' : '分析 Excel'}</button>
         </div>
-        <p className="grade-import-note">有學號時優先用學號配對；目前附件沒有學號，會以座號與姓名配對。重新匯入同一次考試可修正成績或補上校排。</p>
+        <p className="grade-import-note">有學號時優先用學號配對，沒有學號才會以座號與姓名配對。歷史檔案請由較舊到較新依序匯入；重新匯入同一次考試會合併修正，空白欄位不會清除已存在的作文或排名。</p>
 
         {preview && <div className="grade-import-preview">
           <div className="grade-preview-summary">
