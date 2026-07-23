@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   BookOpen,
+  BarChart3,
   CalendarRange,
   CheckCircle2,
   ClipboardPenLine,
@@ -27,6 +28,7 @@ import {
 import { markAnnouncementRead } from '../services/announcementService.js'
 import StudentHelperWorkspace from './StudentHelperWorkspace.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
+import StudentGrades from './StudentGrades.jsx'
 
 const reasonLabels = {
   incomplete: '未完成',
@@ -227,7 +229,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     <div className="student-home-shell">
       <header className="student-home-header">
         <div className="student-home-brand"><span><BookOpen /></span><div><strong>八年六班</strong><small>線上聯絡簿</small></div></div>
-        {activeView !== 'helper' && <nav className="student-view-tabs" aria-label="學生功能切換"><button className={activeView === 'home' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('home'); setNotice(null) }}><BookOpen />聯絡簿</button><button className={activeView === 'announcements' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('announcements'); setNotice(null) }}><Megaphone />公告欄</button><button className={activeView === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('calendar'); setNotice(null) }}><CalendarRange />班級行事曆</button></nav>}
+        {activeView !== 'helper' && <nav className="student-view-tabs" aria-label="學生功能切換"><button className={activeView === 'home' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('home'); setNotice(null) }}><BookOpen />聯絡簿</button><button className={activeView === 'announcements' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('announcements'); setNotice(null) }}><Megaphone />公告欄</button><button className={activeView === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('calendar'); setNotice(null) }}><CalendarRange />班級行事曆</button><button className={activeView === 'grades' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('grades'); setNotice(null) }}><BarChart3 />個人成績</button></nav>}
         <div className="student-home-actions">
           {hasHelperRole && activeView === 'home' && <button type="button" className="student-helper-launch" onClick={() => setActiveView('helper')}><ClipboardPenLine />幹部工作區</button>}
           <button type="button" className="student-refresh-button" aria-label="重新整理" onClick={() => load({ quiet: true })}><RefreshCw className={refreshing ? 'is-spinning' : ''} /></button>
@@ -239,6 +241,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
         {notice && <div className={`admin-notice is-${notice.type}`}>{notice.message}</div>}
         {activeView === 'helper' && hasHelperRole && <StudentHelperWorkspace dashboard={dashboard} onBack={() => setActiveView('home')} />}
         {activeView === 'calendar' && <CalendarViewer classId={dashboard.classInfo.id} audience="student" />}
+        {activeView === 'grades' && <StudentGrades studentId={dashboard.student.id} />}
         {activeView === 'announcements' && <div className="student-announcement-view">
           <section className="student-home-panel student-announcements-panel">
             <div className="student-home-panel-heading">
@@ -325,7 +328,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
           </section>
 
           <section className="student-home-panel student-exceptions-panel">
-            <div className="student-home-panel-heading"><div><span><UserRound /></span><div><h2>繳交提醒</h2><p>補交後保留 3 天，累積紀錄不消失</p></div></div><strong>{visibleExceptions.length} 筆</strong></div>
+            <div className="student-home-panel-heading"><div><span><UserRound /></span><div><h2>繳交提醒</h2><p>補交後保留 1 天，累積紀錄不消失</p></div></div><strong>{visibleExceptions.length} 筆</strong></div>
             {!visibleExceptions.length && <div className="student-home-empty is-small"><CheckCircle2 /><strong>目前沒有待處理項目</strong></div>}
             <div className="student-exception-list">{visibleExceptions.map((item) => {
               const assignment = dashboard.assignments.find((row) => row.id === item.assignmentId)

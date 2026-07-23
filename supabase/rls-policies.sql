@@ -304,6 +304,9 @@ alter table public.assessment_periods enable row level security;
 alter table public.assessments enable row level security;
 alter table public.student_scores enable row level security;
 
+-- 正式個人成績模組的三張資料表與政策由
+-- migrations/20260723090000_add_personal_grade_system.sql 建立；任課教師目前不具讀取權限。
+
 create policy contact_book_profiles_read_self on public.contact_book_profiles
 for select to authenticated using (id = auth.uid() or public.contact_book_is_admin());
 

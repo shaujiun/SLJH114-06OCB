@@ -5582,6 +5582,323 @@ footer {
   font-size: 14pt;
 }
 
+.grade-management,
+.student-grades-view {
+  display: grid;
+  gap: 22px;
+}
+
+.grade-import-panel,
+.grade-class-panel,
+.student-grade-detail,
+.student-grade-history,
+.student-grade-analysis,
+.student-grades-empty {
+  min-width: 0;
+}
+
+.grade-import-controls {
+  display: grid;
+  grid-template-columns: 180px minmax(280px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.grade-import-controls label,
+.grade-query-toolbar label,
+.student-grade-select {
+  display: grid;
+  gap: 7px;
+  font-size: 14pt;
+}
+
+.grade-import-controls input,
+.grade-query-toolbar select,
+.student-grade-select select {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid #cabde3;
+  border-radius: 13px;
+  background: #fffefd;
+  color: #2c2941;
+  padding: 8px 12px;
+  font: inherit;
+}
+
+.grade-file-control input {
+  padding: 6px;
+}
+
+.grade-file-control input::file-selector-button {
+  margin-right: 10px;
+  border: 0;
+  border-radius: 9px;
+  background: #eee7fb;
+  padding: 8px 12px;
+  color: #4d377b;
+  font: inherit;
+  cursor: pointer;
+}
+
+.grade-import-note {
+  margin: 14px 0 0;
+  color: #655f70;
+  font-size: 14pt;
+  line-height: 1.6;
+}
+
+.grade-import-preview {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border: 2px dashed #a999cf;
+  border-radius: 18px;
+  background: #faf7ff;
+  padding: 16px;
+}
+
+.grade-preview-summary,
+.grade-import-submit,
+.grade-query-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.grade-preview-summary strong {
+  font-size: 17pt;
+}
+
+.grade-preview-summary span,
+.grade-publish-state {
+  border-radius: 999px;
+  background: #e8f5ef;
+  padding: 6px 11px;
+  color: #216753;
+  font-size: 13pt;
+}
+
+.grade-preview-summary .has-warning {
+  background: #fff0d4;
+  color: #875218;
+}
+
+.grade-preview-exams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.grade-preview-exams article {
+  display: grid;
+  gap: 4px;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+  box-shadow: inset 0 0 0 1px #ded5ef;
+}
+
+.grade-preview-exams strong {
+  font-size: 15pt;
+}
+
+.grade-preview-exams span,
+.grade-preview-exams small,
+.grade-import-submit p {
+  margin: 0;
+  font-size: 13pt;
+}
+
+.grade-unmatched-list {
+  border-radius: 12px;
+  background: #fff4df;
+  padding: 10px 13px;
+  color: #754b1f;
+  font-size: 14pt;
+}
+
+.grade-unmatched-list summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.grade-unmatched-list div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.grade-unmatched-list span {
+  border-radius: 999px;
+  background: #fff;
+  padding: 4px 9px;
+}
+
+.grade-query-toolbar {
+  margin-bottom: 16px;
+}
+
+.grade-query-toolbar label {
+  width: min(100%, 420px);
+}
+
+.grade-publish-state {
+  background: #eee9f7;
+  color: #625078;
+}
+
+.grade-publish-state.is-published {
+  background: #d8f1e6;
+  color: #176348;
+}
+
+.grade-table-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 2px solid #ddd2ee;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.grade-score-table {
+  width: 100%;
+  min-width: 1240px;
+  border-collapse: collapse;
+  font-size: 14pt;
+  white-space: nowrap;
+}
+
+.grade-score-table th,
+.grade-score-table td {
+  border-bottom: 1px solid #e7e0ef;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.grade-score-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eee7f8;
+  color: #44335f;
+}
+
+.grade-score-table tbody th {
+  color: #35274d;
+  text-align: left;
+}
+
+.grade-score-table tbody tr:nth-child(even) {
+  background: #fbf9fd;
+}
+
+.student-grade-select {
+  width: min(100%, 420px);
+  margin-bottom: 18px;
+}
+
+.student-grade-selected-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 18px;
+  align-items: start;
+}
+
+.grade-score-table.is-student {
+  min-width: 1080px;
+}
+
+.grade-score-table.is-history {
+  min-width: 850px;
+}
+
+.grade-radar-card {
+  display: grid;
+  justify-items: center;
+  border: 2px solid #d9caeb;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fff 0%, #faf6ff 100%);
+  padding: 14px;
+}
+
+.grade-radar-card h3,
+.student-grade-analysis h3 {
+  margin: 0;
+  color: #3e2c5c;
+  font-size: 18pt;
+}
+
+.grade-radar-card svg {
+  width: min(100%, 300px);
+  overflow: visible;
+}
+
+.grade-radar-grid,
+.grade-radar-axis {
+  fill: none;
+  stroke: #d9cce8;
+  stroke-width: 1.4;
+}
+
+.grade-radar-result {
+  fill: rgb(136 104 192 / 28%);
+  stroke: #7656ac;
+  stroke-width: 3;
+}
+
+.grade-radar-result.is-partial {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grade-radar-point {
+  fill: #7656ac;
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.grade-radar-card text {
+  fill: #493763;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.grade-radar-card p {
+  margin: 0;
+  color: #6b6472;
+  font-size: 12pt;
+}
+
+.grade-average-row th,
+.grade-average-row td {
+  background: #fff3ca;
+  color: #59461d;
+  font-weight: 700;
+}
+
+.student-grade-analysis {
+  background: linear-gradient(135deg, #fff8df, #f4edff);
+}
+
+.student-grade-analysis h3 {
+  margin-top: 8px;
+}
+
+.student-grade-analysis ul {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 25px;
+  font-size: 14pt;
+  line-height: 1.7;
+}
+
 .calendar-day-events .office-academic,
 .calendar-event-category.office-academic,
 .calendar-agenda-list article.office-academic,
@@ -5672,6 +5989,16 @@ footer {
 }
 
 @media (max-width: 1100px) {
+  .grade-import-controls,
+  .student-grade-selected-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grade-radar-card {
+    width: min(100%, 420px);
+    justify-self: center;
+  }
+
   .calendar-import-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5727,16 +6054,18 @@ footer {
   }
 
   .student-view-tabs button {
-    width: 100%;
-    min-width: 0;
+    width: auto;
+    min-width: max-content;
+    flex: 0 0 auto;
     justify-content: center;
-    padding-inline: 6px;
+    padding-inline: 12px;
     white-space: nowrap;
   }
 
   .student-view-tabs {
-    display: grid;
-    grid-template-columns: 0.85fr 0.85fr 1.3fr;
+    display: flex;
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 
   .student-view-tabs svg {

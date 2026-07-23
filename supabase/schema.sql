@@ -325,7 +325,8 @@ create table if not exists public.honor_entries (
 create index if not exists honor_entries_class_date_idx
   on public.honor_entries(class_id, awarded_on desc);
 
--- 成績模組僅預留資料結構，第一版不建立正式操作畫面。
+-- 舊版成績預留結構；正式個人成績模組由
+-- migrations/20260723090000_add_personal_grade_system.sql 建立並管理。
 create table if not exists public.assessment_periods (
   id uuid primary key default gen_random_uuid(),
   academic_term_id uuid not null references public.academic_terms(id) on delete cascade,

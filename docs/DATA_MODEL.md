@@ -4,7 +4,7 @@
 
 ### 一班使用，多班預留
 
-所有作業、學生、公告及權限都關聯 `class_id`。第一版介面不顯示班級切換，但未來分享給其他老師時，可以在同一套程式中隔離不同班級。
+所有作業、學生、公告、成績及權限都關聯 `class_id`。第一版介面不顯示班級切換，但未來分享給其他老師時，可以在同一套程式中隔離不同班級。
 
 ### 分組依科目保存
 
@@ -20,7 +20,11 @@
 
 ### 已補交不刪除
 
-`resolved_at` 保存補交時間，`hide_after` 設為補交後 3 天。待辦清單只篩選尚未到 `hide_after` 的資料，統計與歷史仍讀取原紀錄。
+`resolved_at` 保存補交時間，`hide_after` 設為補交後 1 天。待辦清單只篩選尚未到 `hide_after` 的資料，統計與歷史仍讀取原紀錄。
+
+### 成績先匯入、後發布
+
+`grade_import_batches` 保存每次 Excel 匯入紀錄，`student_grade_results` 以考試與學生為唯一組合。重複匯入同一次考試時更新既有成績，空白欄位不覆蓋先前資料，方便日後補入校排。`grade_exam_periods.is_published` 控制學生是否能讀取該次成績。
 
 ## 主要資料表
 
@@ -28,7 +32,7 @@
 | --- | --- |
 | `schools` | 學校基本資料 |
 | `academic_years` | 學年度起訖 |
-| `academic_terms` | 上、下學期起訖 |
+| `academic_terms` | 三個學期的起訖 |
 | `classes` | 班級 |
 | `contact_book_profiles` | 聯絡簿專用的 Supabase Auth 使用者對應資料、核准狀態；與英文單字系統的 `profiles` 隔離 |
 | `students` | 學生、學號、座號與登入連結 |
@@ -46,9 +50,12 @@
 | `announcements` | 全校／班級公告及圖片路徑 |
 | `announcement_reads` | 學生公告已讀紀錄 |
 | `honor_entries` | 向全班公開的榮譽榜 |
-| `assessment_periods` | 未來評量期間 |
-| `assessments` | 未來評量項目 |
-| `student_scores` | 未來個人成績 |
+| `assessment_periods` | 舊版預留評量期間，目前成績畫面不使用 |
+| `assessments` | 舊版預留評量項目，目前成績畫面不使用 |
+| `student_scores` | 舊版預留個人成績，目前成績畫面不使用 |
+| `grade_exam_periods` | 段考／模擬考主檔、排序及發布狀態 |
+| `grade_import_batches` | Excel 匯入批次與來源檔案稽核紀錄 |
+| `student_grade_results` | 個人成績、排名、匯入來源與學生資料快照 |
 
 ## 權限函式方向
 
