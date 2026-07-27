@@ -44,6 +44,8 @@
 | `student_subject_groups` | 各科目、各學期的學生分組歷史 |
 | `assignments` | 作業內容、期限與適用群組 |
 | `assignment_recipients` | 發布時的學生對象快照 |
+| `daily_quiz_reminders` | 每日各科測驗次數、日期及共同／分組設定；不保存分數 |
+| `daily_quiz_reminder_recipients` | 每日測驗提醒的學生對象與分組快照 |
 | `submission_checks` | 全班繳交或例外點收完成紀錄 |
 | `submission_exceptions` | 個別異常、追繳與補交現況 |
 | `submission_status_events` | 狀態變更歷程 |

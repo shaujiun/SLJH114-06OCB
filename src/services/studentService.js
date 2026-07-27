@@ -1,6 +1,7 @@
 import { requireSupabase } from '../lib/supabase.js'
 import { loadStudentAnnouncements } from './announcementService.js'
 import { loadStudentHonors } from './honorService.js'
+import { loadStudentQuizReminders } from './quizReminderService.js'
 
 function relation(row) {
   return Array.isArray(row) ? row[0] : row
@@ -61,6 +62,21 @@ export function mapStudentAssignmentRow(row) {
 export function filterVisibleStudentAssignments(assignments, academicTermId) {
   return (assignments || []).filter((item) => (
     item.academicTermId === academicTermId && !item.submittedAt
+  ))
+}
+
+export function filterAssignmentsForContactDate(
+  assignments,
+  academicTermId,
+  contactDate,
+  today = localDateString(),
+) {
+  if (contactDate === today) {
+    return filterVisibleStudentAssignments(assignments, academicTermId)
+  }
+  return (assignments || []).filter((item) => (
+    item.academicTermId === academicTermId
+    && item.assignmentDate === contactDate
   ))
 }
 
@@ -202,6 +218,7 @@ export async function loadStudentDashboard() {
     classSubjectsResult,
     announcements,
     honors,
+    quizReminders,
   ] = await Promise.all([
     client
       .from('academic_terms')
@@ -239,6 +256,7 @@ export async function loadStudentDashboard() {
       .order('sort_order'),
     loadStudentAnnouncements({ classId: classInfo.id, studentId: student.id }),
     loadStudentHonors({ classId: classInfo.id }),
+    loadStudentQuizReminders({ classId: classInfo.id }),
   ])
 
   const terms = requireData(termsResult.data, termsResult.error, '無法讀取學期資料。')
@@ -335,6 +353,7 @@ export async function loadStudentDashboard() {
     classSubjects,
     announcements,
     honors,
+    quizReminders,
     defaultTermId: pickDefaultTermId(terms),
   }
 }

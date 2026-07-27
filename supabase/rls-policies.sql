@@ -294,6 +294,8 @@ alter table public.student_helper_assignments enable row level security;
 alter table public.student_subject_groups enable row level security;
 alter table public.assignments enable row level security;
 alter table public.assignment_recipients enable row level security;
+-- 每日測驗提醒的兩張資料表、作業長權限及學生收件人政策由
+-- migrations/20260727090000_add_daily_quiz_reminders.sql 建立。
 alter table public.submission_checks enable row level security;
 alter table public.submission_exceptions enable row level security;
 alter table public.submission_status_events enable row level security;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ban, BookOpenCheck, CalendarClock, CheckCheck, Plus, RefreshCw, Send, UserRoundCheck } from 'lucide-react'
 import { cancelAssignment, loadAssignments, publishAssignment, recordSubmissionCheck, sortAssignmentsByTarget } from '../services/adminService.js'
+import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
 
 function nextDay(date) {
@@ -33,6 +34,7 @@ export default function AssignmentManagement({
   dashboard,
   submissionStage = 'teacher',
   hideTermPicker = false,
+  allowQuizReminders = false,
 }) {
   const isHelperMode = submissionStage === 'helper'
   const firstTerm = dashboard.terms[0]
@@ -157,6 +159,14 @@ export default function AssignmentManagement({
         {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
       </div>
       {notice && <div className={`admin-notice is-${notice.type}`}>{notice.message}</div>}
+      {allowQuizReminders && termId && (
+        <DailyQuizReminderManagement
+          classId={dashboard.classInfo.id}
+          academicTermId={termId}
+          classSubjects={dashboard.classSubjects}
+          helperMode={isHelperMode}
+        />
+      )}
       <div className="assignment-layout-grid">
         <form className="assignment-create-panel" onSubmit={submit}>
           <div className="student-panel-title"><span><Plus aria-hidden="true" /></span><div><h3>發布新作業</h3><p>{isHelperMode ? '使用學生幹部權限，不會開放教師設定' : '不需要上傳照片或附件'}</p></div></div>

@@ -3,6 +3,9 @@ import {
   BookOpen,
   BarChart3,
   CalendarRange,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   ClipboardPenLine,
   ClipboardList,
@@ -20,11 +23,15 @@ import {
 import {
   buildExceptionSummary,
   buildPeriodExceptionSummaries,
-  filterVisibleStudentAssignments,
+  filterAssignmentsForContactDate,
   getEligibleHelperTermIds,
   groupStudentAssignments,
   loadStudentDashboard,
 } from '../services/studentService.js'
+import {
+  groupStudentQuizReminders,
+  quizReminderDisplayText,
+} from '../services/quizReminderService.js'
 import { markAnnouncementRead } from '../services/announcementService.js'
 import StudentHelperWorkspace from './StudentHelperWorkspace.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
@@ -51,6 +58,23 @@ function formatMonthDay(value) {
   return new Intl.DateTimeFormat('zh-TW', {
     month: 'numeric', day: 'numeric',
   }).format(new Date(value))
+}
+
+function localDateString(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
+}
+
+function shiftContactDate(dateString, days) {
+  const value = new Date(`${dateString}T12:00:00`)
+  value.setDate(value.getDate() + days)
+  return localDateString(value)
+}
+
+function contactDateLabel(dateString, today) {
+  if (dateString === today) return '今天'
+  const date = new Date(`${dateString}T12:00:00`)
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
 function currentGroup(groups, term, subjectCode) {
@@ -124,7 +148,9 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
   const [refreshing, setRefreshing] = useState(false)
   const [readingAnnouncementId, setReadingAnnouncementId] = useState('')
   const [activeView, setActiveView] = useState('home')
+  const [contactDate, setContactDate] = useState(localDateString())
   const [notice, setNotice] = useState(null)
+  const today = localDateString()
 
   const load = useCallback(async ({ quiet = false } = {}) => {
     if (quiet) setRefreshing(true)
@@ -152,12 +178,25 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     [dashboard, termId],
   )
   const assignments = useMemo(
-    () => filterVisibleStudentAssignments(dashboard?.assignments, termId),
-    [dashboard, termId],
+    () => filterAssignmentsForContactDate(
+      dashboard?.assignments,
+      termId,
+      contactDate,
+      today,
+    ),
+    [contactDate, dashboard, termId, today],
   )
   const assignmentGroups = useMemo(
     () => groupStudentAssignments(assignments),
     [assignments],
+  )
+  const quizReminderGroups = useMemo(
+    () => groupStudentQuizReminders(
+      dashboard?.quizReminders,
+      termId,
+      contactDate,
+    ),
+    [contactDate, dashboard, termId],
   )
   const exceptionsByAssignment = useMemo(
     () => new Map((dashboard?.exceptions || []).map((item) => [item.assignmentId, item])),
@@ -322,8 +361,20 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
 
         <div className="student-home-grid">
           <section className="student-home-panel student-assignments-panel">
-            <div className="student-home-panel-heading"><div><span><ClipboardList /></span><div><h2>我的作業</h2><p>只顯示共同作業與你的分組作業</p></div></div><strong>{assignments.length} 筆</strong></div>
-            {!assignments.length && <div className="student-home-empty"><CheckCircle2 /><strong>目前沒有作業</strong><span>老師發布後會顯示在這裡。</span></div>}
+            <div className="student-home-panel-heading student-contact-book-heading">
+              <div><span><ClipboardList /></span><div><h2>{contactDate === today ? '我的作業' : `${contactDateLabel(contactDate, today)} 作業紀錄`}</h2><p>{contactDate === today ? '今天維持待辦模式，已繳交作業不顯示' : '歷史日期顯示當天完整作業，不列為新的待辦'}</p></div></div>
+              <div className="student-contact-date-control">
+                <button type="button" aria-label="前一天" onClick={() => setContactDate((current) => shiftContactDate(current, -1))}><ChevronLeft /></button>
+                <label><CalendarDays /><span>聯絡簿日期</span><input type="date" max={today} value={contactDate} onChange={(event) => setContactDate(event.target.value || today)} /></label>
+                <button type="button" aria-label="後一天" disabled={contactDate >= today} onClick={() => setContactDate((current) => shiftContactDate(current, 1))}><ChevronRight /></button>
+                {contactDate !== today && <button type="button" className="student-contact-today-button" onClick={() => setContactDate(today)}>回到今天</button>}
+              </div>
+            </div>
+            {quizReminderGroups.length > 0 && <section className="student-quiz-reminder-card">
+              <div className="student-quiz-reminder-title"><ClipboardPenLine /><div><h3>{contactDate === today ? '今日測驗成績' : `${contactDateLabel(contactDate, today)} 測驗成績`}</h3><p>請將下列測驗成績填入學校紙本聯絡簿</p></div></div>
+              <div className="student-quiz-reminder-groups">{quizReminderGroups.map((group) => <div key={group.key}><span className={`student-target-badge is-${group.key === 'common' ? 'common' : group.key.toLowerCase()}`}>{group.label}</span><p>{group.reminders.map((reminder) => <strong key={reminder.id}>{quizReminderDisplayText(reminder)}</strong>)}</p></div>)}</div>
+            </section>}
+            {!assignments.length && !quizReminderGroups.length && <div className="student-home-empty"><CheckCircle2 /><strong>{contactDate === today ? '目前沒有作業或測驗提醒' : '這一天沒有聯絡簿內容'}</strong><span>{contactDate === today ? '老師或作業長發布後會顯示在這裡。' : '可以切換其他日期繼續查詢。'}</span></div>}
             <div className="student-assignment-list">{assignmentGroups.map((group) => <AssignmentGroupCard key={group.key} group={group} exceptionsByAssignment={exceptionsByAssignment} />)}</div>
           </section>
 

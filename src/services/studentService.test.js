@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildExceptionSummary,
   buildPeriodExceptionSummaries,
+  filterAssignmentsForContactDate,
   filterVisibleStudentAssignments,
   getHelperSubjectIds,
   getHelperSubjectPermissions,
@@ -53,6 +54,41 @@ describe('學生聯絡簿資料', () => {
     ]
     expect(filterVisibleStudentAssignments(assignments, 'term-1').map((item) => item.id))
       .toEqual(['open-current'])
+  })
+
+  it('今天維持待辦模式，歷史日期顯示當天全部原始作業', () => {
+    const assignments = [
+      {
+        id: 'today-open',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-08-12',
+        submittedAt: null,
+      },
+      {
+        id: 'past-submitted',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-08-11',
+        submittedAt: '2026-08-12T08:00:00Z',
+      },
+      {
+        id: 'past-open',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-08-11',
+        submittedAt: null,
+      },
+    ]
+    expect(filterAssignmentsForContactDate(
+      assignments,
+      'term-1',
+      '2026-08-12',
+      '2026-08-12',
+    ).map((item) => item.id)).toEqual(['today-open', 'past-open'])
+    expect(filterAssignmentsForContactDate(
+      assignments,
+      'term-1',
+      '2026-08-11',
+      '2026-08-12',
+    ).map((item) => item.id)).toEqual(['past-submitted', 'past-open'])
   })
 
   it('補交提醒在保留期限內顯示，期限後消失，累積遲交不消失', () => {

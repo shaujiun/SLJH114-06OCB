@@ -394,7 +394,7 @@ export default function AdminDashboard({ user, onExit }) {
           <GradeManagement dashboard={dashboard} onNotice={handleSectionNotice} />
         )}
         {!loading && dashboard && activeSection === 'assignments' && (
-          <AssignmentManagement dashboard={dashboard} />
+          <AssignmentManagement dashboard={dashboard} allowQuizReminders />
         )}
       </main>
     </div>

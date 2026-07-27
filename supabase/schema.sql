@@ -216,6 +216,10 @@ create table if not exists public.assignment_recipients (
   primary key (assignment_id, student_id)
 );
 
+-- 每日測驗次數提醒與收件人快照由
+-- migrations/20260727090000_add_daily_quiz_reminders.sql 建立；
+-- 修正後的安全寫入函式由 20260727093000 migration 管理。
+
 create index if not exists assignment_recipients_student_idx
   on public.assignment_recipients(student_id, assignment_id);
 
