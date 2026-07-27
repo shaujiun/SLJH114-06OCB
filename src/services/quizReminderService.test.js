@@ -5,6 +5,7 @@ import {
   quizReminderDisplayText,
   quizReminderKey,
   reminderCountsFromRows,
+  splitQuizReminderSubjects,
 } from './quizReminderService.js'
 
 const subjects = [
@@ -14,6 +15,27 @@ const subjects = [
 ]
 
 describe('每日測驗提醒', () => {
+  it('將英語與數學放在第一列，並以歷史、地理、公民取代社會總項', () => {
+    const arranged = splitQuizReminderSubjects([
+      { id: 'social-id', code: 'social', name: '社會', sortOrder: 50 },
+      { id: 'math-id', code: 'math', name: '數學', sortOrder: 30 },
+      { id: 'history-id', code: 'history', name: '歷史', sortOrder: 51 },
+      { id: 'chinese-id', code: 'chinese', name: '國文', sortOrder: 10 },
+      { id: 'english-id', code: 'english', name: '英語', sortOrder: 20 },
+      { id: 'geography-id', code: 'geography', name: '地理', sortOrder: 52 },
+      { id: 'civics-id', code: 'civics', name: '公民', sortOrder: 53 },
+    ])
+
+    expect(arranged.groupedSubjects.map((subject) => subject.code)).toEqual(['english', 'math'])
+    expect(arranged.otherSubjects.map((subject) => subject.code)).toEqual([
+      'chinese',
+      'history',
+      'geography',
+      'civics',
+    ])
+    expect(arranged.visibleSubjects.some((subject) => subject.code === 'social')).toBe(false)
+  })
+
   it('一般科目只建立共同提醒，英語可分共同、A、B 組', () => {
     const items = buildQuizReminderItems(subjects, {
       [quizReminderKey('chinese-id')]: 3,

@@ -6,6 +6,7 @@ import {
   quizReminderKey,
   reminderCountsFromRows,
   saveDailyQuizReminders,
+  splitQuizReminderSubjects,
 } from '../services/quizReminderService.js'
 
 function localDateString(date = new Date()) {
@@ -35,10 +36,8 @@ export default function DailyQuizReminderManagement({
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState(null)
 
-  const sortedSubjects = useMemo(
-    () => [...(classSubjects || [])].sort((left, right) => (
-      (left.sortOrder ?? 999) - (right.sortOrder ?? 999)
-    )),
+  const subjectRows = useMemo(
+    () => splitQuizReminderSubjects(classSubjects),
     [classSubjects],
   )
 
@@ -74,7 +73,7 @@ export default function DailyQuizReminderManagement({
     setSaving(true)
     setNotice(null)
     try {
-      const items = buildQuizReminderItems(sortedSubjects, counts)
+      const items = buildQuizReminderItems(subjectRows.visibleSubjects, counts)
       const result = await saveDailyQuizReminders({
         classId,
         academicTermId,
@@ -93,6 +92,36 @@ export default function DailyQuizReminderManagement({
     } finally {
       setSaving(false)
     }
+  }
+
+  function renderSubject(subject) {
+    const grouped = ['math', 'english'].includes(subject.code)
+    return (
+      <article key={subject.id} className={grouped ? 'is-grouped-subject' : 'is-common-subject'}>
+        <strong>{subject.name}</strong>
+        <div className="daily-quiz-target-inputs">
+          {subjectTargets(subject).map((target) => (
+            <label key={target.key}>
+              <span>{target.label}</span>
+              <input
+                type="number"
+                min="0"
+                max="9"
+                inputMode="numeric"
+                aria-label={`${subject.name}${target.label}測驗次數`}
+                value={counts[quizReminderKey(subject.id, target.key)] || 0}
+                onChange={(event) => changeCount(
+                  subject.id,
+                  target.key,
+                  event.target.value,
+                )}
+              />
+              <small>次</small>
+            </label>
+          ))}
+        </div>
+      </article>
+    )
   }
 
   return (
@@ -124,36 +153,18 @@ export default function DailyQuizReminderManagement({
 
       {!loading && (
         <>
-          <div className="daily-quiz-subject-grid">
-            {sortedSubjects.map((subject) => (
-              <article key={subject.id}>
-                <strong>{subject.name}</strong>
-                <div className="daily-quiz-target-inputs">
-                  {subjectTargets(subject).map((target) => (
-                    <label key={target.key}>
-                      <span>{target.label}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="9"
-                        inputMode="numeric"
-                        aria-label={`${subject.name}${target.label}測驗次數`}
-                        value={counts[quizReminderKey(subject.id, target.key)] || 0}
-                        onChange={(event) => changeCount(
-                          subject.id,
-                          target.key,
-                          event.target.value,
-                        )}
-                      />
-                      <small>次</small>
-                    </label>
-                  ))}
-                </div>
-              </article>
-            ))}
+          <div className="daily-quiz-subject-rows">
+            <div className="daily-quiz-subject-grid is-grouped-row">
+              {subjectRows.groupedSubjects.map(renderSubject)}
+            </div>
+            <div
+              className="daily-quiz-subject-grid is-other-row"
+              style={{ '--quiz-other-count': Math.max(subjectRows.otherSubjects.length, 1) }}
+            >
+              {subjectRows.otherSubjects.map(renderSubject)}
+            </div>
           </div>
           <div className="daily-quiz-save-row">
-            <p>輸入 <strong>0</strong> 代表不顯示；測驗 1 次時，學生端只顯示科目名稱。</p>
             <button
               type="button"
               className="approve-button"

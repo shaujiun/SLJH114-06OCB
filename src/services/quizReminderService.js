@@ -13,6 +13,32 @@ export function quizReminderKey(classSubjectId, target = 'common') {
   return `${classSubjectId}|${target}`
 }
 
+export function splitQuizReminderSubjects(classSubjects) {
+  const sorted = [...(classSubjects || [])].sort((left, right) => (
+    (left.sortOrder ?? 999) - (right.sortOrder ?? 999)
+  ))
+  const groupedOrder = { english: 0, math: 1 }
+  const groupedSubjects = sorted
+    .filter((subject) => ['english', 'math'].includes(subject.code))
+    .sort((left, right) => groupedOrder[left.code] - groupedOrder[right.code])
+  const socialSectionCodes = new Set(
+    sorted
+      .filter((subject) => ['history', 'geography', 'civics'].includes(subject.code))
+      .map((subject) => subject.code),
+  )
+  const hasSplitSocialSubjects = socialSectionCodes.size === 3
+  const otherSubjects = sorted.filter((subject) => (
+    !['english', 'math'].includes(subject.code)
+    && !(hasSplitSocialSubjects && subject.code === 'social')
+  ))
+
+  return {
+    groupedSubjects,
+    otherSubjects,
+    visibleSubjects: [...groupedSubjects, ...otherSubjects],
+  }
+}
+
 export function buildQuizReminderItems(classSubjects, counts) {
   const items = []
   for (const subject of classSubjects || []) {
