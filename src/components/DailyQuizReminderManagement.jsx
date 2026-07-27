@@ -84,7 +84,9 @@ export default function DailyQuizReminderManagement({
       setNotice({
         type: 'success',
         message: result.savedCount
-          ? `已儲存 ${result.savedCount} 項測驗提醒。`
+          ? result.emptyAudienceCount
+            ? `已儲存 ${result.savedCount} 項提醒；其中 ${result.emptyAudienceCount} 項目前沒有符合的學生。`
+            : `已儲存 ${result.savedCount} 項測驗提醒。`
           : '這一天的測驗提醒已全部清除。',
       })
     } catch (error) {

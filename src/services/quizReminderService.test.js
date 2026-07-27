@@ -24,6 +24,9 @@ describe('每日測驗提醒', () => {
       { id: 'english-id', code: 'english', name: '英語', sortOrder: 20 },
       { id: 'geography-id', code: 'geography', name: '地理', sortOrder: 52 },
       { id: 'civics-id', code: 'civics', name: '公民', sortOrder: 53 },
+      { id: 'arts-id', code: 'arts', name: '藝文', sortOrder: 60 },
+      { id: 'health-id', code: 'health_pe', name: '健體', sortOrder: 70 },
+      { id: 'integrative-id', code: 'integrative', name: '綜合', sortOrder: 80 },
     ])
 
     expect(arranged.groupedSubjects.map((subject) => subject.code)).toEqual(['english', 'math'])

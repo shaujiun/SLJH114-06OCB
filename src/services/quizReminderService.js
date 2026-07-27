@@ -27,8 +27,10 @@ export function splitQuizReminderSubjects(classSubjects) {
       .map((subject) => subject.code),
   )
   const hasSplitSocialSubjects = socialSectionCodes.size === 3
+  const hiddenQuizSubjectCodes = new Set(['arts', 'health_pe', 'integrative'])
   const otherSubjects = sorted.filter((subject) => (
     !['english', 'math'].includes(subject.code)
+    && !hiddenQuizSubjectCodes.has(subject.code)
     && !(hasSplitSocialSubjects && subject.code === 'social')
   ))
 
