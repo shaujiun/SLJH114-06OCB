@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   BookOpen,
+  BookOpenText,
   CalendarRange,
   ClipboardList,
   GraduationCap,
@@ -11,6 +12,7 @@ import {
 import { loadTeacherDashboard } from '../services/teacherService.js'
 import AssignmentManagement from './AssignmentManagement.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
+import LearningResourceManagement from './LearningResourceManagement.jsx'
 
 export default function TeacherDashboard({ user, onExit }) {
   const [dashboard, setDashboard] = useState(null)
@@ -18,6 +20,10 @@ export default function TeacherDashboard({ user, onExit }) {
   const [refreshing, setRefreshing] = useState(false)
   const [notice, setNotice] = useState(null)
   const [activeSection, setActiveSection] = useState('assignments')
+  const handleSectionNotice = useCallback(
+    (type, message) => setNotice({ type, message }),
+    [],
+  )
 
   const load = useCallback(async ({ quiet = false } = {}) => {
     if (quiet) setRefreshing(true)
@@ -45,6 +51,7 @@ export default function TeacherDashboard({ user, onExit }) {
         <nav aria-label="教師功能">
           <button className={activeSection === 'assignments' ? 'is-active' : ''} type="button" onClick={() => { setActiveSection('assignments'); setNotice(null) }}><ClipboardList aria-hidden="true" />作業與繳交</button>
           <button className={activeSection === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveSection('calendar'); setNotice(null) }}><CalendarRange aria-hidden="true" />班級行事曆</button>
+          <button className={activeSection === 'learning' ? 'is-active' : ''} type="button" onClick={() => { setActiveSection('learning'); setNotice(null) }}><BookOpenText aria-hidden="true" />學習資源</button>
         </nav>
         <div className="admin-sidebar-foot">
           <ShieldCheck aria-hidden="true" />
@@ -57,7 +64,7 @@ export default function TeacherDashboard({ user, onExit }) {
           <div>
             <p className="eyebrow">TEACHER WORKSPACE</p>
             <h1>{user.displayName}老師，您好</h1>
-            <p>{activeSection === 'calendar' ? '查看班級、學校、考試及放假行程。' : '發布任教科目作業，並登記全班繳交或例外學生。'}</p>
+            <p>{activeSection === 'calendar' ? '查看班級、學校、考試及放假行程。' : activeSection === 'learning' ? '發布授權科目的學習方法與影片。' : '發布任教科目作業，並登記全班繳交或例外學生。'}</p>
             {dashboard && (
               <div className="teacher-workspace-subjects" aria-label="可管理科目">
                 <GraduationCap aria-hidden="true" />
@@ -77,6 +84,7 @@ export default function TeacherDashboard({ user, onExit }) {
         {loading && <div className="admin-loading"><RefreshCw className="is-spinning" aria-hidden="true" />正在讀取任教資料…</div>}
         {!loading && dashboard && activeSection === 'assignments' && <AssignmentManagement dashboard={dashboard} />}
         {!loading && dashboard && activeSection === 'calendar' && <CalendarViewer classId={dashboard.classInfo.id} audience="teacher" />}
+        {!loading && dashboard && activeSection === 'learning' && <LearningResourceManagement dashboard={dashboard} onNotice={handleSectionNotice} teacherMode />}
       </main>
     </div>
   )

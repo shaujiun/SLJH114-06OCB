@@ -26,6 +26,10 @@
 
 `grade_import_batches` 保存每次 Excel 匯入紀錄，`student_grade_results` 以考試與學生為唯一組合。重複匯入同一次考試時更新既有成績，空白欄位不覆蓋先前資料，方便日後補入校排。`grade_exam_periods.is_published` 控制學生是否能讀取該次成績。
 
+### 學習資源依發布者及科目授權
+
+`learning_resources` 同時保存學習方法與學習影片。學生只能讀取已發布且已到發布時間的內容；任課老師只能建立被指派科目的資源，並只能管理自己建立的內容；導師可管理全部資源與通用資源。文章本文以純文字保存，封面圖片放在私有 Storage bucket，讀取時產生短效簽署網址。
+
 ## 主要資料表
 
 | 資料表 | 用途 |
@@ -58,6 +62,7 @@
 | `grade_exam_periods` | 段考／模擬考主檔、排序及發布狀態 |
 | `grade_import_batches` | Excel 匯入批次與來源檔案稽核紀錄 |
 | `student_grade_results` | 個人成績、排名、匯入來源與學生資料快照 |
+| `learning_resources` | 學習方法／影片、科目、來源、發布時間、置頂、排序與上下架狀態 |
 
 ## 權限函式方向
 
