@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  learningResourceUploadErrorMessage,
   normalizeHttpUrl,
   validateLearningResourceInput,
   videoEmbedInfo,
@@ -75,5 +76,25 @@ describe('學習資源輸入', () => {
       title: '有效讀書方法',
       contentUrl: 'https://example.com/method',
     })
+  })
+})
+
+describe('學習資源封面上傳錯誤', () => {
+  it('權限失敗時不誤指為圖片格式問題', () => {
+    expect(learningResourceUploadErrorMessage({
+      statusCode: 403,
+      message: 'new row violates row-level security policy',
+    })).toBe('目前帳號沒有上傳學習資源封面圖片的權限，請重新登入後再試。')
+  })
+
+  it('分別說明圖片過大與格式不符', () => {
+    expect(learningResourceUploadErrorMessage({
+      statusCode: 413,
+      message: 'The object exceeded the maximum allowed size',
+    })).toBe('封面圖片不可超過 5 MB。')
+    expect(learningResourceUploadErrorMessage({
+      statusCode: 400,
+      message: 'mime type image/gif is not supported',
+    })).toBe('封面圖片只接受 JPG、PNG 或 WebP。')
   })
 })

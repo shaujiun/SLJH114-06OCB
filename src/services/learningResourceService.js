@@ -19,6 +19,26 @@ function extensionFor(file) {
   return 'jpg'
 }
 
+export function learningResourceUploadErrorMessage(error) {
+  const status = Number(error?.statusCode || error?.status || 0)
+  const message = String(error?.message || error?.error || '').toLowerCase()
+  if (
+    status === 401
+    || status === 403
+    || message.includes('row-level security')
+    || message.includes('unauthorized')
+  ) {
+    return '目前帳號沒有上傳學習資源封面圖片的權限，請重新登入後再試。'
+  }
+  if (status === 413 || message.includes('maximum allowed size') || message.includes('too large')) {
+    return '封面圖片不可超過 5 MB。'
+  }
+  if (message.includes('mime type') || message.includes('content type')) {
+    return '封面圖片只接受 JPG、PNG 或 WebP。'
+  }
+  return '封面圖片上傳失敗，請稍後再試。'
+}
+
 export function normalizeHttpUrl(value, { required = false } = {}) {
   const normalized = normalizeText(value)
   if (!normalized && !required) return ''
@@ -302,7 +322,7 @@ export async function saveLearningResource({
         contentType: imageFile.type,
         upsert: false,
       })
-    if (uploadError) throw new Error('封面圖片上傳失敗，請確認格式與大小。')
+    if (uploadError) throw new Error(learningResourceUploadErrorMessage(uploadError))
     nextImagePath = uploadedImagePath
   }
 
