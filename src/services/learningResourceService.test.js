@@ -84,7 +84,7 @@ describe('學習資源封面上傳錯誤', () => {
     expect(learningResourceUploadErrorMessage({
       statusCode: 403,
       message: 'new row violates row-level security policy',
-    })).toBe('目前帳號沒有上傳學習資源封面圖片的權限，請重新登入後再試。')
+    })).toBe('封面圖片上傳權限驗證失敗，請通知系統管理員。')
   })
 
   it('分別說明圖片過大與格式不符', () => {

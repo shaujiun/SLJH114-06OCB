@@ -28,7 +28,7 @@ export function learningResourceUploadErrorMessage(error) {
     || message.includes('row-level security')
     || message.includes('unauthorized')
   ) {
-    return '目前帳號沒有上傳學習資源封面圖片的權限，請重新登入後再試。'
+    return '封面圖片上傳權限驗證失敗，請通知系統管理員。'
   }
   if (status === 413 || message.includes('maximum allowed size') || message.includes('too large')) {
     return '封面圖片不可超過 5 MB。'
