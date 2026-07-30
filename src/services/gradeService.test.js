@@ -96,5 +96,18 @@ describe('個人成績分析', () => {
     expect(analysis.headline).toContain('自然')
     expect(analysis.messages.join('')).toContain('數學')
     expect(analysis.messages.join('')).toContain('進步')
+    expect(analysis.messages).toHaveLength(4)
+  })
+
+  it('依成績內容提供三至五點分析', () => {
+    const withDecline = [
+      results[0],
+      { ...results[1], englishScore: 52 },
+    ]
+    const analysis = buildAutomaticGradeAnalysis(withDecline)
+    expect(analysis.messages.length).toBeGreaterThanOrEqual(3)
+    expect(analysis.messages.length).toBeLessThanOrEqual(5)
+    expect(analysis.messages).toHaveLength(5)
+    expect(analysis.messages.join('')).toContain('本次比上一次少')
   })
 })

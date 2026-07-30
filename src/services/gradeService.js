@@ -436,7 +436,11 @@ export function buildAutomaticGradeAnalysis(results) {
   const averages = calculateSubjectAverages(results).filter((item) => item.average !== null)
   if (!averages.length) return { headline: '成績資料尚不足', messages: ['再累積一次考試後，就能開始觀察各科趨勢。'] }
   const strongest = [...averages].sort((a, b) => b.average - a.average)[0]
-  const focus = [...averages].sort((a, b) => a.average - b.average)[0]
+  const ascendingAverages = [...averages].sort((a, b) => a.average - b.average)
+  const focus = ascendingAverages.find((item) => item.key !== strongest.key) || strongest
+  const secondaryFocus = ascendingAverages.find(
+    (item) => item.key !== strongest.key && item.key !== focus.key,
+  )
   const latest = results.at(-1)
   const previous = results.at(-2)
   const comparable = previous && latest
@@ -447,11 +451,25 @@ export function buildAutomaticGradeAnalysis(results) {
     }).filter((item) => item.change !== null)
     : []
   const improved = [...comparable].sort((a, b) => b.change - a.change)[0]
+  const declined = [...comparable].sort((a, b) => a.change - b.change)[0]
   const messages = [
     `目前平均表現最穩定的是${strongest.label}（${strongest.average} 分），請繼續保持原本有效的準備方式。`,
-    `${focus.label}是現階段最值得優先加強的科目。${studyTips[focus.key]}`,
   ]
+  if (focus.key === strongest.key) {
+    messages.push('目前可比較的科目還不多，先保持規律複習，之後有更多成績就能看出更完整的方向。')
+  } else {
+    messages.push(`${focus.label}是現階段最值得優先加強的科目。${studyTips[focus.key]}`)
+  }
+  if (secondaryFocus && averages.length >= 4) {
+    messages.push(`${secondaryFocus.label}可以列為第二個練習重點。${studyTips[secondaryFocus.key]}`)
+  }
   if (improved?.change > 0) messages.push(`${improved.label}比上一次進步 ${Math.round(improved.change * 10) / 10} 分，持續的小進步會累積成很大的改變。`)
   else messages.push('一次成績只是學習過程的訊號，找出一個能立刻調整的小習慣，就已經是在前進。')
-  return { headline: `${strongest.label}是目前強項，下一步先照顧${focus.label}`, messages }
+  if (declined?.change <= -3) {
+    messages.push(`${declined.label}本次比上一次少 ${Math.abs(Math.round(declined.change * 10) / 10)} 分，可以先查看錯題集中在哪個單元，再安排一次短時間重練。`)
+  }
+  const headline = focus.key === strongest.key
+    ? `${strongest.label}是目前可觀察的學習重點`
+    : `${strongest.label}是目前強項，下一步先照顧${focus.label}`
+  return { headline, messages: messages.slice(0, 5) }
 }
