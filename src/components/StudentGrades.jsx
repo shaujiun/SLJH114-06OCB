@@ -102,6 +102,7 @@ export default function StudentGrades({ studentId }) {
         <div className="student-home-panel-heading"><div><span><BrainCircuit /></span><div><h2>個人學習分析</h2><p>在站內依歷次成績自動整理，不傳送到外部 AI</p></div></div></div>
         <h3>{analysis.headline}</h3>
         <ul>{analysis.messages.map((message) => <li key={message}>{message}</li>)}</ul>
+        <p className="student-grade-ai-note">若需更詳細的分析，可自行使用生成式 AI 協助分析；使用時請勿輸入姓名、學號或其他可識別個人身分的資料。</p>
       </section>
     </div>
   )

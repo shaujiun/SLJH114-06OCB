@@ -5899,6 +5899,17 @@ footer {
   line-height: 1.7;
 }
 
+.student-grade-ai-note {
+  margin: 16px 0 0;
+  padding: 12px 15px;
+  border: 1px solid #d9c8ef;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #5f5370;
+  font-size: 13pt;
+  line-height: 1.6;
+}
+
 .calendar-day-events .office-academic,
 .calendar-event-category.office-academic,
 .calendar-agenda-list article.office-academic,
