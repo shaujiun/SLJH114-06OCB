@@ -4,6 +4,7 @@ import process from 'node:process'
 const vocabularyTables = [
   'profiles',
   'vocabulary',
+  'vocabulary_examples',
   'student_progress',
   'mastered_words',
 ]
