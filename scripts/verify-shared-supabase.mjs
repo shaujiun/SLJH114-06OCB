@@ -34,6 +34,11 @@ const contactBookTables = [
   'assessment_periods',
   'assessments',
   'student_scores',
+  'learning_systems',
+  'learning_activities',
+  'student_focus_week_states',
+  'student_focus_tasks',
+  'focus_task_attempts',
 ]
 
 const contactBookRpcs = [
@@ -48,6 +53,10 @@ const contactBookRpcs = [
   'record_assignment_submission_check',
   'admin_save_calendar_event',
   'admin_set_calendar_event_active',
+  'resolve_student_learning_group',
+  'ensure_student_focus_week',
+  'prepare_student_focus_tasks',
+  'record_focus_task_attempt',
 ]
 
 function requiredEnvironment(name) {

@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 
 const projectRoot = process.cwd()
 const backupDirectory = path.join(projectRoot, 'backups')
-const dateLabel = new Date().toISOString().slice(0, 10)
-const tableNames = ['profiles', 'vocabulary', 'student_progress', 'mastered_words']
+const capturedAt = new Date()
+const dateLabel = capturedAt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
+const vocabularyTableNames = ['profiles', 'vocabulary', 'student_progress', 'mastered_words']
 
 function requiredEnvironment(name) {
   const value = process.env[name]?.trim()
@@ -28,6 +29,7 @@ async function readAllRows(client, tableName) {
       .select('*')
       .range(from, from + pageSize - 1)
 
+    if (error?.code === 'PGRST205' || error?.code === '42P01') return null
     if (error) throw new Error(`Unable to back up ${tableName}: ${error.message}`)
     rows.push(...data)
     if (data.length < pageSize) return rows
@@ -56,6 +58,29 @@ async function readAllAuthUsers(client) {
   }
 }
 
+async function readContactBookSchema() {
+  const migrationDirectory = path.join(projectRoot, 'supabase', 'migrations')
+  const migrationNames = (await readdir(migrationDirectory))
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+  const migrations = []
+  const tableNames = new Set(vocabularyTableNames)
+
+  for (const migrationName of migrationNames) {
+    const migrationPath = path.join(migrationDirectory, migrationName)
+    const sql = await readFile(migrationPath, 'utf8')
+    migrations.push(`-- ===== ${migrationName} =====\n${sql.trim()}\n`)
+    for (const match of sql.matchAll(/create\s+table\s+if\s+not\s+exists\s+public\.([a-zA-Z0-9_]+)/gi)) {
+      tableNames.add(match[1])
+    }
+  }
+
+  return {
+    migrationSchema: migrations.join('\n'),
+    tableNames: [...tableNames].sort(),
+  }
+}
+
 async function main() {
   const supabaseUrl = requiredEnvironment('SUPABASE_URL')
   const serviceRoleKey = requiredEnvironment('SUPABASE_SERVICE_ROLE_KEY')
@@ -69,9 +94,11 @@ async function main() {
 
   await mkdir(backupDirectory, { recursive: true })
 
-  const data = { capturedAt: new Date().toISOString(), tables: {}, authUsers: [] }
+  const { migrationSchema, tableNames } = await readContactBookSchema()
+  const data = { capturedAt: capturedAt.toISOString(), tables: {}, authUsers: [] }
   for (const tableName of tableNames) {
-    data.tables[tableName] = await readAllRows(client, tableName)
+    const rows = await readAllRows(client, tableName)
+    if (rows !== null) data.tables[tableName] = rows
   }
   data.authUsers = await readAllAuthUsers(client)
 
@@ -93,18 +120,26 @@ async function main() {
     '英文單字系統',
     'supabase-schema.sql',
   )
-  const localSchema = await readFile(localSchemaPath, 'utf8')
+  const vocabularySchema = await readFile(localSchemaPath, 'utf8')
+  const localSchema = [
+    '-- ===== English vocabulary base schema =====',
+    vocabularySchema.trim(),
+    '',
+    '-- ===== Contact book and shared project migrations =====',
+    migrationSchema.trim(),
+    '',
+  ].join('\n')
 
-  const dataPath = path.join(backupDirectory, `english-vocab-data-${dateLabel}.json`)
-  const openApiPath = path.join(backupDirectory, `english-vocab-openapi-${dateLabel}.json`)
-  const schemaPath = path.join(backupDirectory, `english-vocab-schema-${dateLabel}.sql`)
+  const dataPath = path.join(backupDirectory, `shared-supabase-data-${dateLabel}.json`)
+  const openApiPath = path.join(backupDirectory, `shared-supabase-openapi-${dateLabel}.json`)
+  const schemaPath = path.join(backupDirectory, `shared-supabase-schema-${dateLabel}.sql`)
 
   await writeFile(dataPath, jsonText(data), { encoding: 'utf8', flag: 'wx' })
   await writeFile(openApiPath, jsonText(openApiSchema), { encoding: 'utf8', flag: 'wx' })
   await writeFile(schemaPath, localSchema, { encoding: 'utf8', flag: 'wx' })
 
   const counts = Object.fromEntries(
-    tableNames.map((tableName) => [tableName, data.tables[tableName].length]),
+    Object.entries(data.tables).map(([tableName, rows]) => [tableName, rows.length]),
   )
   console.log(JSON.stringify({ dataPath, openApiPath, schemaPath, counts, authUsers: data.authUsers.length }))
 }
