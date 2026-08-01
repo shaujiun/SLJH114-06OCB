@@ -150,6 +150,14 @@ async function main() {
     .order('semester')
   if (termError) throw new Error(`Unable to verify academic terms: ${termError.message}`)
 
+  const { data: learningSystems, error: learningSystemsError } = await client
+    .from('learning_systems')
+    .select('subject_code,audience_scope,is_active')
+    .order('display_order')
+  if (learningSystemsError) {
+    throw new Error(`Unable to verify learning system audiences: ${learningSystemsError.message}`)
+  }
+
   console.log(JSON.stringify({
     vocabularyCounts,
     authUsers: await countAuthUsers(client),
@@ -177,6 +185,11 @@ async function main() {
     },
     approvedAdmins,
     pendingTeachers,
+    learningSystems: learningSystems.map((system) => ({
+      subjectCode: system.subject_code,
+      audienceScope: system.audience_scope,
+      isActive: system.is_active,
+    })),
     termSchedule: termSchedule.map((term) => ({
       semester: term.semester,
       startsOn: term.starts_on,
