@@ -669,7 +669,7 @@ export default function App() {
 
   if (currentUser) {
     if (currentUser.role === 'admin') {
-      return <AdminDashboard user={currentUser} onExit={handleSignOut} />
+      return <AdminDashboard user={currentUser} onExit={handleSignOut} learningSystemUrl={learningSystemUrl} />
     }
     if (currentUser.role === 'student') {
       return <StudentDashboard onExit={handleSignOut} learningSystemUrl={learningSystemUrl} />

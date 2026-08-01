@@ -66,7 +66,7 @@ function EmptyTeachers() {
   )
 }
 
-export default function AdminDashboard({ user, onExit }) {
+export default function AdminDashboard({ user, onExit, learningSystemUrl }) {
   const [activeSection, setActiveSection] = useState('dashboard')
   const [dashboard, setDashboard] = useState(null)
   const [selectedSubjects, setSelectedSubjects] = useState({})
@@ -246,6 +246,17 @@ export default function AdminDashboard({ user, onExit }) {
             <p>{activeSection === 'dashboard' ? '先確認班級設定，再處理任課老師申請。' : activeSection === 'students' ? '建立學生帳號資料並分別設定數學、英語分組。' : activeSection === 'teachers' ? '查看已核准教師並調整可管理的任教科目。' : activeSection === 'announcements' ? '發布全校或班級公告，並查看學生已讀狀況。' : activeSection === 'honors' ? '建立向全班公開的榮譽紀錄，不顯示個人私密資料。' : activeSection === 'calendar' ? '建立與維護班級月份行事曆。' : activeSection === 'grades' ? '匯入、預覽、查詢並發布全班歷次成績。' : activeSection === 'learning' ? '發布通用或各科學習方法與影片。' : '發布共同與分組作業，系統會保存學生對象快照。'}</p>
           </div>
           <div className="admin-topbar-actions">
+            <button
+              className="secondary-button admin-learning-system-button"
+              type="button"
+              title="管理各科學習系統連結"
+              onClick={() => {
+                if (learningSystemUrl) window.location.assign(learningSystemUrl)
+                else setNotice({ type: 'error', message: '各科學習系統網址尚未設定。' })
+              }}
+            >
+              <GraduationCap aria-hidden="true" />學習系統
+            </button>
             <button
               className="admin-icon-button"
               type="button"
