@@ -1,4 +1,9 @@
 import { requireSupabase } from '../lib/supabase.js'
+import {
+  isValidLearningResourceAudience,
+  learningResourceAudienceLabel,
+  normalizeLearningResourceAudience,
+} from '../lib/learningResourceAudiences.js'
 import { createClientId } from './announcementService.js'
 
 const RESOURCE_BUCKET = 'contact-book-learning-resources'
@@ -127,14 +132,17 @@ export function validateLearningResourceInput({
   sourceUrl,
   publishedAt,
   imageFile,
+  audienceScope = 'common',
 }) {
   const normalizedTitle = normalizeText(title)
   const normalizedSummary = normalizeText(summary)
   const normalizedArticle = normalizeText(articleBody)
   const normalizedSource = normalizeText(sourceName)
+  const normalizedAudience = normalizeText(audienceScope).toLowerCase()
   if (!['method', 'video'].includes(resourceType)) throw new Error('請選擇學習資源類型。')
   const expectedTypes = resourceType === 'video' ? ['video'] : ['external', 'article']
   if (!expectedTypes.includes(contentType)) throw new Error('請選擇正確的內容形式。')
+  if (!isValidLearningResourceAudience(normalizedAudience)) throw new Error('請選擇正確的顯示對象。')
   if (!normalizedTitle || normalizedTitle.length > 120) throw new Error('標題必須為 1 至 120 個字。')
   if (normalizedSummary.length > 1000) throw new Error('內容簡介不可超過 1000 個字。')
   if (normalizedArticle.length > 20000) throw new Error('站內文章不可超過 20000 個字。')
@@ -158,6 +166,7 @@ export function validateLearningResourceInput({
     sourceName: normalizedSource,
     sourceUrl: normalizedSourceUrl,
     publishedAt: publishedDate.toISOString(),
+    audienceScope: normalizedAudience,
   }
 }
 
@@ -174,6 +183,8 @@ export function mapLearningResourceRow(row, imageUrl = null) {
     classSubjectId: row.class_subject_id,
     resourceType: row.resource_type,
     contentType: row.content_type,
+    audienceScope: normalizeLearningResourceAudience(row.audience_scope),
+    audienceLabel: learningResourceAudienceLabel(row.audience_scope, { short: true }),
     title: row.title,
     summary: row.summary || '',
     articleBody: row.article_body || '',
@@ -213,6 +224,7 @@ const resourceSelect = `
   class_subject_id,
   resource_type,
   content_type,
+  audience_scope,
   title,
   summary,
   article_body,
@@ -288,6 +300,7 @@ export async function saveLearningResource({
   sourceUrl,
   imageFile,
   imageAltText,
+  audienceScope = 'common',
   currentImagePath,
   removeImage = false,
   publishedAt,
@@ -305,6 +318,7 @@ export async function saveLearningResource({
     sourceUrl,
     publishedAt,
     imageFile,
+    audienceScope,
   })
   const client = requireSupabase()
   const { data: userData, error: userError } = await client.auth.getUser()
@@ -331,6 +345,7 @@ export async function saveLearningResource({
     class_subject_id: classSubjectId || null,
     resource_type: resourceType,
     content_type: resourceType === 'video' ? 'video' : contentType,
+    audience_scope: validated.audienceScope,
     title: validated.title,
     summary: validated.summary || null,
     article_body: contentType === 'article' ? validated.articleBody : null,

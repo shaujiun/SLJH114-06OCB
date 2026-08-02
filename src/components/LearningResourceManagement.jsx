@@ -24,6 +24,7 @@ import {
   videoEmbedInfo,
 } from '../services/learningResourceService.js'
 import LearningResourceCard from './LearningResourceCard.jsx'
+import { learningResourceAudienceOptionsForSubject } from '../lib/learningResourceAudiences.js'
 
 function localDateTimeString(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value)
@@ -36,6 +37,7 @@ function emptyForm(defaultSubjectId = '') {
     resourceType: 'method',
     contentType: 'external',
     classSubjectId: defaultSubjectId,
+    audienceScope: 'common',
     title: '',
     summary: '',
     articleBody: '',
@@ -145,6 +147,7 @@ export default function LearningResourceManagement({
       resourceType: resource.resourceType,
       contentType: resource.contentType,
       classSubjectId: resource.classSubjectId || '',
+      audienceScope: resource.audienceScope,
       title: resource.title,
       summary: resource.summary,
       articleBody: resource.articleBody,
@@ -213,6 +216,26 @@ export default function LearningResourceManagement({
     }
   }
 
+  const selectedSubject = dashboard.classSubjects.find(
+    (subject) => subject.id === form.classSubjectId,
+  ) || null
+  const audienceOptions = useMemo(
+    () => learningResourceAudienceOptionsForSubject(selectedSubject?.code),
+    [selectedSubject?.code],
+  )
+
+  function changeSubject(classSubjectId) {
+    const subject = dashboard.classSubjects.find((item) => item.id === classSubjectId)
+    const nextAudienceOptions = learningResourceAudienceOptionsForSubject(subject?.code)
+    setForm((current) => ({
+      ...current,
+      classSubjectId,
+      audienceScope: nextAudienceOptions.some((option) => option.value === current.audienceScope)
+        ? current.audienceScope
+        : 'common',
+    }))
+  }
+
   const previewResource = useMemo(() => {
     const embed = form.resourceType === 'video'
       ? videoEmbedInfo(form.contentUrl)
@@ -220,6 +243,8 @@ export default function LearningResourceManagement({
     return {
       resourceType: form.resourceType,
       contentType: form.resourceType === 'video' ? 'video' : form.contentType,
+      audienceScope: form.audienceScope,
+      audienceLabel: audienceOptions.find((option) => option.value === form.audienceScope)?.shortLabel || '共同',
       title: form.title,
       summary: form.summary,
       articleBody: form.articleBody,
@@ -235,7 +260,7 @@ export default function LearningResourceManagement({
       videoPlatform: embed.platform,
       embedUrl: embed.embedUrl,
     }
-  }, [dashboard.classSubjects, editing, form, imagePreview, removeImage, teacherMode])
+  }, [audienceOptions, dashboard.classSubjects, editing, form, imagePreview, removeImage, teacherMode])
 
   return (
     <section className="learning-resource-management">
@@ -256,7 +281,8 @@ export default function LearningResourceManagement({
 
           <div className="learning-resource-form-grid">
             <label><span>資源類型</span><select value={form.resourceType} onChange={(event) => setForm((current) => ({ ...current, resourceType: event.target.value, contentType: event.target.value === 'video' ? 'video' : 'external' }))}><option value="method">學習方法</option><option value="video">學習影片</option></select></label>
-            <label><span>科目</span><select required={teacherMode} value={form.classSubjectId} onChange={(event) => setForm({ ...form, classSubjectId: event.target.value })}>{!teacherMode && <option value="">通用</option>}{dashboard.classSubjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></label>
+            <label><span>科目</span><select required={teacherMode} value={form.classSubjectId} onChange={(event) => changeSubject(event.target.value)}>{!teacherMode && <option value="">通用</option>}{dashboard.classSubjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></label>
+            <label><span>顯示對象</span><select value={form.audienceScope} onChange={(event) => setForm({ ...form, audienceScope: event.target.value })}>{audienceOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select><small>學生只會看到共同內容及符合本人分組的內容。</small></label>
             {form.resourceType === 'method' && <label><span>呈現方式</span><select value={form.contentType} onChange={(event) => setForm({ ...form, contentType: event.target.value })}><option value="external">外部文章連結</option><option value="article">站內文章</option></select></label>}
             <label><span>發布日期</span><input required type="datetime-local" value={form.publishedAt} onChange={(event) => setForm({ ...form, publishedAt: event.target.value })} /></label>
           </div>
@@ -314,6 +340,7 @@ export default function LearningResourceManagement({
                 <div className="learning-resource-admin-meta">
                   <span>{resource.resourceType === 'video' ? '學習影片' : '學習方法'}</span>
                   <span>{resource.subject?.name || '通用'}</span>
+                  <span>{resource.audienceLabel}</span>
                   {resource.isPinned && <span><Pin />置頂</span>}
                   {!resource.isActive && <span>已下架</span>}
                 </div>

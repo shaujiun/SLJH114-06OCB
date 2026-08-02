@@ -50,6 +50,7 @@ describe('學習資源輸入', () => {
     sourceUrl: '',
     publishedAt: '2026-07-28T08:00',
     imageFile: null,
+    audienceScope: 'common',
   }
 
   it('站內文章必須包含文章與來源', () => {
@@ -75,7 +76,15 @@ describe('學習資源輸入', () => {
     expect(validateLearningResourceInput(base)).toMatchObject({
       title: '有效讀書方法',
       contentUrl: 'https://example.com/method',
+      audienceScope: 'common',
     })
+  })
+
+  it('拒絕未知的學生顯示對象', () => {
+    expect(() => validateLearningResourceInput({
+      ...base,
+      audienceScope: 'all_a',
+    })).toThrow('顯示對象')
   })
 })
 

@@ -33,6 +33,7 @@ export default function LearningResourceCard({ resource, preview = false }) {
             {isVideo ? '學習影片' : '學習方法'}
           </span>
           <span className="learning-resource-subject">{resource.subject?.name || '通用'}</span>
+          <span className="learning-resource-audience">{resource.audienceLabel || '共同'}</span>
           {resource.isPinned && <span className="learning-resource-pin"><Pin />置頂</span>}
         </div>
 

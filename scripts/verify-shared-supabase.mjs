@@ -158,6 +158,13 @@ async function main() {
     throw new Error(`Unable to verify learning system audiences: ${learningSystemsError.message}`)
   }
 
+  const { data: learningResources, error: learningResourcesError } = await client
+    .from('learning_resources')
+    .select('audience_scope')
+  if (learningResourcesError) {
+    throw new Error(`Unable to verify learning resource audiences: ${learningResourcesError.message}`)
+  }
+
   console.log(JSON.stringify({
     vocabularyCounts,
     authUsers: await countAuthUsers(client),
@@ -190,6 +197,11 @@ async function main() {
       audienceScope: system.audience_scope,
       isActive: system.is_active,
     })),
+    learningResourceAudiences: learningResources.reduce((counts, resource) => {
+      const scope = resource.audience_scope || 'common'
+      counts[scope] = (counts[scope] || 0) + 1
+      return counts
+    }, {}),
     termSchedule: termSchedule.map((term) => ({
       semester: term.semester,
       startsOn: term.starts_on,
