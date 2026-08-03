@@ -5875,6 +5875,113 @@ footer {
   font-size: 12pt;
 }
 
+.grade-trend-chart {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.grade-trend-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grade-trend-controls button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  border: 2px solid #cfc2e2;
+  border-radius: 999px;
+  background: #fff;
+  padding: 6px 13px;
+  color: #4a3b61;
+  font: inherit;
+  font-size: 14pt;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.grade-trend-controls button:hover,
+.grade-trend-controls button:focus-visible,
+.grade-trend-controls button.is-active {
+  border-color: #7656ac;
+  background: #eee7f8;
+  outline: none;
+}
+
+.grade-trend-controls i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px currentColor;
+}
+
+.grade-trend-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 2px solid #ddd2ee;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff, #fcf9ff);
+}
+
+.grade-trend-scroll:focus-visible {
+  outline: 3px solid rgba(118, 86, 172, 0.28);
+  outline-offset: 2px;
+}
+
+.grade-trend-scroll svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.grade-trend-grid {
+  stroke: #d8cfdf;
+  stroke-width: 1.2;
+}
+
+.grade-trend-x-guide {
+  stroke: #ece6f1;
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+}
+
+.grade-trend-axis-label,
+.grade-trend-exam-label,
+.grade-trend-value {
+  fill: #554966;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.grade-trend-line {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grade-trend-point {
+  stroke: #fff;
+  stroke-width: 2.2;
+}
+
+.grade-trend-value {
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.grade-trend-note {
+  margin: 0;
+  color: #655d6d;
+  font-size: 14pt;
+}
+
 .grade-average-row th,
 .grade-average-row td {
   background: #fff3ca;

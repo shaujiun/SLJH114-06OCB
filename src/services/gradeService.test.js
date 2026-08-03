@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildAutomaticGradeAnalysis,
+  buildGradeTrendSeries,
   calculateSubjectAverages,
   parseGradeWorkbookRows,
 } from './gradeService.js'
@@ -89,6 +90,23 @@ describe('個人成績分析', () => {
   it('缺考不以零分納入平均', () => {
     const withAbsence = [...results, { chineseScore: null }]
     expect(calculateSubjectAverages(withAbsence)).toContainEqual(expect.objectContaining({ key: 'chineseScore', average: 72.5, count: 2 }))
+  })
+
+  it('建立七科歷次折線資料並保留缺考空值', () => {
+    const trendResults = [
+      { examId: 'exam-1', exam: { label: '七-1 一段' }, chineseScore: 70, englishScore: null },
+      { examId: 'exam-2', exam: { label: '七-1 二段' }, chineseScore: 80, englishScore: 75 },
+    ]
+    const series = buildGradeTrendSeries(trendResults)
+    expect(series).toHaveLength(7)
+    expect(series[0]).toMatchObject({
+      key: 'chineseScore',
+      points: [
+        { examId: 'exam-1', examLabel: '七-1 一段', value: 70 },
+        { examId: 'exam-2', examLabel: '七-1 二段', value: 80 },
+      ],
+    })
+    expect(series[1].points[0].value).toBeNull()
   })
 
   it('提供強項、待加強科目與進步提醒', () => {

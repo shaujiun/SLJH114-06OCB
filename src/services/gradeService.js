@@ -422,6 +422,17 @@ export function calculateSubjectAverages(results) {
   })
 }
 
+export function buildGradeTrendSeries(results) {
+  return gradeSubjectDefinitions.map((subject) => ({
+    ...subject,
+    points: (results || []).map((result) => ({
+      examId: result.examId,
+      examLabel: result.exam?.label || '',
+      value: numberOrNull(result[subject.key]),
+    })),
+  }))
+}
+
 const studyTips = {
   chineseScore: '每天安排短篇閱讀，整理段落主旨與容易誤判的題型。',
   englishScore: '分散背誦單字並朗讀例句，每週回頭複習曾經答錯的題目。',

@@ -6,6 +6,7 @@ import {
   gradeSubjectDefinitions,
   loadStudentGrades,
 } from '../services/gradeService.js'
+import GradeTrendChart from './GradeTrendChart.jsx'
 
 function displayScore(value, missing = '—') {
   return value === null || value === undefined || value === '' ? missing : Number(value).toLocaleString('zh-TW')
@@ -94,7 +95,8 @@ export default function StudentGrades({ studentId }) {
       </section>
 
       <section className="student-home-panel student-grade-history">
-        <div className="student-home-panel-heading"><div><span><TrendingUp /></span><div><h2>歷次七科成績</h2><p>橫向比較每一次已發布的考試</p></div></div></div>
+        <div className="student-home-panel-heading"><div><span><TrendingUp /></span><div><h2>歷次七科成績</h2><p>查看折線趨勢，也可用表格核對每次分數</p></div></div></div>
+        <GradeTrendChart results={results} />
         <div className="grade-table-scroll"><table className="grade-score-table is-history"><thead><tr><th>考試</th>{gradeSubjectDefinitions.map((subject) => <th key={subject.key}>{subject.label}</th>)}</tr></thead><tbody>{results.map((result) => <tr key={result.id}><th scope="row">{result.exam.label}</th>{gradeSubjectDefinitions.map((subject) => <td key={subject.key}>{displayScore(result[subject.key], '缺考')}</td>)}</tr>)}<tr className="grade-average-row"><th scope="row">目前平均</th>{averages.map((subject) => <td key={subject.key}>{displayScore(subject.average)}</td>)}</tr></tbody></table></div>
       </section>
 
