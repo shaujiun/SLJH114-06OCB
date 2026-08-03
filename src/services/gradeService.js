@@ -169,13 +169,20 @@ function parseSummarySheet(rows, { students, resultMap, unmatched }) {
 }
 
 function examFromSheetName(sheetName, cohortStartSchoolYear) {
-  const match = /^(\d{3})-(\d)(?:-)?([一二12])段$/.exec(normalizeText(sheetName))
-  if (!match) return null
-  const schoolYear = Number(match[1])
-  const gradeLevel = 7 + schoolYear - Number(cohortStartSchoolYear)
-  const semester = Number(match[2])
-  const examNumber = ['一', '1'].includes(match[3]) ? 1 : 2
-  return examByKey.get(`g${gradeLevel}-s${semester}-e${examNumber}`) || null
+  const normalizedName = normalizeText(sheetName).replace(/\s+/g, '')
+  const termMatch = /^(\d{3})-(\d)(?:-)?([一二12])段$/.exec(normalizedName)
+  if (termMatch) {
+    const schoolYear = Number(termMatch[1])
+    const gradeLevel = 7 + schoolYear - Number(cohortStartSchoolYear)
+    const semester = Number(termMatch[2])
+    const examNumber = ['一', '1'].includes(termMatch[3]) ? 1 : 2
+    return examByKey.get(`g${gradeLevel}-s${semester}-e${examNumber}`) || null
+  }
+  const mockMatch = /^(?:\d{3}[-_])?第?([一二三四1234])次?(?:模擬考|模考)$/.exec(normalizedName)
+  if (!mockMatch) return null
+  const mockNumberMap = { 一: 1, 二: 2, 三: 3, 四: 4 }
+  const examNumber = mockNumberMap[mockMatch[1]] || Number(mockMatch[1])
+  return examByKey.get(`mock-${examNumber}`) || null
 }
 
 function parseDetailedSheet(rows, { sheetName, exam, students, resultMap, unmatched }) {
@@ -252,7 +259,7 @@ export function parseGradeWorkbookRows({ sheets, students, cohortStartSchoolYear
     }
   }).sort((left, right) => left.sortOrder - right.sortOrder)
 
-  if (!exams.length && !unmatched.length) throw new Error('Excel 中找不到可辨識的段考成績。')
+  if (!exams.length && !unmatched.length) throw new Error('Excel 中找不到可辨識的段考或模擬考成績。')
   return { exams, unmatched }
 }
 
@@ -431,6 +438,100 @@ export function buildGradeTrendSeries(results) {
       value: numberOrNull(result[subject.key]),
     })),
   }))
+}
+
+function roundToOne(value) {
+  return Math.round(value * 10) / 10
+}
+
+export function compareGradeExams(termResult, mockResult) {
+  if (!termResult || !mockResult) return null
+  const subjects = gradeSubjectDefinitions.map((subject) => {
+    const termScore = numberOrNull(termResult[subject.key])
+    const mockScore = numberOrNull(mockResult[subject.key])
+    return {
+      ...subject,
+      termScore,
+      mockScore,
+      difference: termScore === null || mockScore === null ? null : roundToOne(mockScore - termScore),
+    }
+  })
+  const scoreSummaries = [
+    { key: 'totalScore', label: '七科總分' },
+    { key: 'weightedTotalScore', label: '加權總分' },
+  ].map((item) => {
+    const termValue = numberOrNull(termResult[item.key])
+    const mockValue = numberOrNull(mockResult[item.key])
+    return {
+      ...item,
+      termValue,
+      mockValue,
+      difference: termValue === null || mockValue === null ? null : roundToOne(mockValue - termValue),
+    }
+  })
+  const ranks = [
+    { key: 'classRank', label: '班排' },
+    { key: 'schoolRank', label: '校排' },
+  ].map((item) => {
+    const termValue = numberOrNull(termResult[item.key])
+    const mockValue = numberOrNull(mockResult[item.key])
+    return {
+      ...item,
+      termValue,
+      mockValue,
+      improvement: termValue === null || mockValue === null ? null : roundToOne(termValue - mockValue),
+    }
+  })
+  return { subjects, scoreSummaries, ranks }
+}
+
+export function buildLongTermGradeProgress(results) {
+  const orderedResults = [...(results || [])].sort(
+    (left, right) => (left.exam?.sortOrder || 0) - (right.exam?.sortOrder || 0),
+  )
+  const subjects = gradeSubjectDefinitions.map((subject) => {
+    const points = orderedResults.flatMap((result) => {
+      const value = numberOrNull(result[subject.key])
+      return value === null ? [] : [{ examId: result.examId, examLabel: result.exam?.label || '', value }]
+    })
+    const first = points[0] || null
+    const latest = points.at(-1) || null
+    const previous = points.at(-2) || null
+    const best = points.length ? [...points].sort((left, right) => right.value - left.value)[0] : null
+    return {
+      ...subject,
+      points,
+      first,
+      latest,
+      best,
+      average: points.length ? roundToOne(points.reduce((sum, point) => sum + point.value, 0) / points.length) : null,
+      totalChange: first && latest && first.examId !== latest.examId ? roundToOne(latest.value - first.value) : null,
+      recentChange: previous && latest ? roundToOne(latest.value - previous.value) : null,
+    }
+  })
+  const ranks = [
+    { key: 'classRank', label: '班排' },
+    { key: 'schoolRank', label: '校排' },
+  ].map((rank) => {
+    const points = orderedResults.flatMap((result) => {
+      const value = numberOrNull(result[rank.key])
+      return value === null ? [] : [{ examId: result.examId, examLabel: result.exam?.label || '', value }]
+    })
+    const first = points[0] || null
+    const latest = points.at(-1) || null
+    const previous = points.at(-2) || null
+    const best = points.length ? [...points].sort((left, right) => left.value - right.value)[0] : null
+    return {
+      ...rank,
+      points,
+      first,
+      latest,
+      best,
+      totalImprovement: first && latest && first.examId !== latest.examId ? roundToOne(first.value - latest.value) : null,
+      recentImprovement: previous && latest ? roundToOne(previous.value - latest.value) : null,
+    }
+  })
+  return { subjects, ranks }
 }
 
 const studyTips = {

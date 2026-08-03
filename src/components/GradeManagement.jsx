@@ -165,7 +165,7 @@ export default function GradeManagement({ dashboard, onNotice }) {
 
       <section className="admin-panel grade-class-panel">
         <div className="admin-panel-heading">
-          <div><span className="panel-icon"><Users /></span><div><h2>全班段考成績</h2><p>選擇已匯入的考試，查詢或發布給學生</p></div></div>
+          <div><span className="panel-icon"><Users /></span><div><h2>全班歷次成績</h2><p>選擇已匯入的段考或模擬考，查詢或發布給學生</p></div></div>
           {selectedExam && <span className={`grade-publish-state ${selectedExam.isPublished ? 'is-published' : ''}`}>{selectedExam.isPublished ? '學生可見' : '尚未發布'}</span>}
         </div>
         <div className="grade-query-toolbar">
