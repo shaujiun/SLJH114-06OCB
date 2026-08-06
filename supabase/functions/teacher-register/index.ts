@@ -51,6 +51,30 @@ Deno.serve(async (request) => {
     const { data: existingAuth } = await publicClient.auth.signInWithPassword({ email, password })
     let profileId = existingAuth.user?.id ?? null
 
+    if (profileId) {
+      const [{ data: contactProfile }, { data: vocabularyProfile }] = await Promise.all([
+        admin
+          .from('contact_book_profiles')
+          .select('username')
+          .eq('id', profileId)
+          .maybeSingle(),
+        admin
+          .from('profiles')
+          .select('username')
+          .eq('id', profileId)
+          .maybeSingle(),
+      ])
+      const storedUsernames = [
+        contactProfile?.username,
+        vocabularyProfile?.username,
+        existingAuth.user?.user_metadata?.username,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+
+      if (storedUsernames.some((storedUsername) => storedUsername !== username)) {
+        return genericAuthError()
+      }
+    }
+
     if (!profileId) {
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
