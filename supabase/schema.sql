@@ -40,6 +40,8 @@ create table if not exists public.classes (
   class_number smallint not null check (class_number > 0),
   name text not null,
   is_active boolean not null default true,
+  show_class_rank boolean not null default false,
+  show_school_rank boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint class_year_name_unique unique (academic_year_id, name)

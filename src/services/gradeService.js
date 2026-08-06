@@ -169,13 +169,20 @@ function parseSummarySheet(rows, { students, resultMap, unmatched }) {
 }
 
 function examFromSheetName(sheetName, cohortStartSchoolYear) {
-  const match = /^(\d{3})-(\d)(?:-)?([一二12])段$/.exec(normalizeText(sheetName))
-  if (!match) return null
-  const schoolYear = Number(match[1])
-  const gradeLevel = 7 + schoolYear - Number(cohortStartSchoolYear)
-  const semester = Number(match[2])
-  const examNumber = ['一', '1'].includes(match[3]) ? 1 : 2
-  return examByKey.get(`g${gradeLevel}-s${semester}-e${examNumber}`) || null
+  const normalizedName = normalizeText(sheetName).replace(/\s+/g, '')
+  const termMatch = /^(\d{3})-(\d)(?:-)?([一二12])段$/.exec(normalizedName)
+  if (termMatch) {
+    const schoolYear = Number(termMatch[1])
+    const gradeLevel = 7 + schoolYear - Number(cohortStartSchoolYear)
+    const semester = Number(termMatch[2])
+    const examNumber = ['一', '1'].includes(termMatch[3]) ? 1 : 2
+    return examByKey.get(`g${gradeLevel}-s${semester}-e${examNumber}`) || null
+  }
+  const mockMatch = /^(?:\d{3}[-_])?第?([一二三四1234])次?(?:模擬考|模考)$/.exec(normalizedName)
+  if (!mockMatch) return null
+  const mockNumberMap = { 一: 1, 二: 2, 三: 3, 四: 4 }
+  const examNumber = mockNumberMap[mockMatch[1]] || Number(mockMatch[1])
+  return examByKey.get(`mock-${examNumber}`) || null
 }
 
 function parseDetailedSheet(rows, { sheetName, exam, students, resultMap, unmatched }) {
@@ -252,7 +259,7 @@ export function parseGradeWorkbookRows({ sheets, students, cohortStartSchoolYear
     }
   }).sort((left, right) => left.sortOrder - right.sortOrder)
 
-  if (!exams.length && !unmatched.length) throw new Error('Excel 中找不到可辨識的段考成績。')
+  if (!exams.length && !unmatched.length) throw new Error('Excel 中找不到可辨識的段考或模擬考成績。')
   return { exams, unmatched }
 }
 
@@ -316,14 +323,23 @@ function mapResult(row) {
   }
 }
 
+export function mapGradeRankVisibility(row) {
+  return {
+    showClassRank: row?.show_class_rank === true,
+    showSchoolRank: row?.show_school_rank === true,
+  }
+}
+
 export async function loadAdminGradeOverview({ classId }) {
   const client = requireSupabase()
-  const [examsResult, studentsResult] = await Promise.all([
+  const [examsResult, studentsResult, visibilityResult] = await Promise.all([
     client.from('grade_exam_periods').select('*').eq('class_id', classId).order('sort_order'),
     client.from('students').select('id,student_id_code,seat_number,full_name').eq('class_id', classId).eq('is_active', true).order('seat_number'),
+    client.from('classes').select('show_class_rank,show_school_rank').eq('id', classId).single(),
   ])
   if (examsResult.error) throw new Error('無法讀取已匯入的考試清單。')
   if (studentsResult.error) throw new Error('無法讀取成績匯入學生名單。')
+  if (visibilityResult.error) throw new Error('無法讀取學生端排名顯示設定。')
   return {
     exams: (examsResult.data || []).map(mapExam),
     students: (studentsResult.data || []).map((student) => ({
@@ -332,6 +348,37 @@ export async function loadAdminGradeOverview({ classId }) {
       seatNumber: student.seat_number,
       fullName: student.full_name,
     })),
+    rankVisibility: mapGradeRankVisibility(visibilityResult.data),
+  }
+}
+
+export async function loadGradeRankVisibility({ classId }) {
+  if (!classId) return mapGradeRankVisibility(null)
+  const client = requireSupabase()
+  const { data, error } = await client
+    .from('classes')
+    .select('show_class_rank,show_school_rank')
+    .eq('id', classId)
+    .single()
+  if (error) throw new Error('無法讀取排名顯示設定。')
+  return mapGradeRankVisibility(data)
+}
+
+export async function setGradeRankVisibility({ classId, showClassRank, showSchoolRank }) {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('admin_set_grade_rank_visibility', {
+    p_class_id: classId,
+    p_show_class_rank: Boolean(showClassRank),
+    p_show_school_rank: Boolean(showSchoolRank),
+  })
+  if (error) {
+    const message = error.message || ''
+    if (message.includes('permission_denied')) throw new Error('目前帳號沒有調整學生排名顯示的權限。')
+    throw new Error('排名顯示設定儲存失敗，請稍後再試。')
+  }
+  return {
+    showClassRank: data?.showClassRank === true,
+    showSchoolRank: data?.showSchoolRank === true,
   }
 }
 
@@ -431,6 +478,100 @@ export function buildGradeTrendSeries(results) {
       value: numberOrNull(result[subject.key]),
     })),
   }))
+}
+
+function roundToOne(value) {
+  return Math.round(value * 10) / 10
+}
+
+export function compareGradeExams(termResult, mockResult) {
+  if (!termResult || !mockResult) return null
+  const subjects = gradeSubjectDefinitions.map((subject) => {
+    const termScore = numberOrNull(termResult[subject.key])
+    const mockScore = numberOrNull(mockResult[subject.key])
+    return {
+      ...subject,
+      termScore,
+      mockScore,
+      difference: termScore === null || mockScore === null ? null : roundToOne(mockScore - termScore),
+    }
+  })
+  const scoreSummaries = [
+    { key: 'totalScore', label: '七科總分' },
+    { key: 'weightedTotalScore', label: '加權總分' },
+  ].map((item) => {
+    const termValue = numberOrNull(termResult[item.key])
+    const mockValue = numberOrNull(mockResult[item.key])
+    return {
+      ...item,
+      termValue,
+      mockValue,
+      difference: termValue === null || mockValue === null ? null : roundToOne(mockValue - termValue),
+    }
+  })
+  const ranks = [
+    { key: 'classRank', label: '班排' },
+    { key: 'schoolRank', label: '校排' },
+  ].map((item) => {
+    const termValue = numberOrNull(termResult[item.key])
+    const mockValue = numberOrNull(mockResult[item.key])
+    return {
+      ...item,
+      termValue,
+      mockValue,
+      improvement: termValue === null || mockValue === null ? null : roundToOne(termValue - mockValue),
+    }
+  })
+  return { subjects, scoreSummaries, ranks }
+}
+
+export function buildLongTermGradeProgress(results) {
+  const orderedResults = [...(results || [])].sort(
+    (left, right) => (left.exam?.sortOrder || 0) - (right.exam?.sortOrder || 0),
+  )
+  const subjects = gradeSubjectDefinitions.map((subject) => {
+    const points = orderedResults.flatMap((result) => {
+      const value = numberOrNull(result[subject.key])
+      return value === null ? [] : [{ examId: result.examId, examLabel: result.exam?.label || '', value }]
+    })
+    const first = points[0] || null
+    const latest = points.at(-1) || null
+    const previous = points.at(-2) || null
+    const best = points.length ? [...points].sort((left, right) => right.value - left.value)[0] : null
+    return {
+      ...subject,
+      points,
+      first,
+      latest,
+      best,
+      average: points.length ? roundToOne(points.reduce((sum, point) => sum + point.value, 0) / points.length) : null,
+      totalChange: first && latest && first.examId !== latest.examId ? roundToOne(latest.value - first.value) : null,
+      recentChange: previous && latest ? roundToOne(latest.value - previous.value) : null,
+    }
+  })
+  const ranks = [
+    { key: 'classRank', label: '班排' },
+    { key: 'schoolRank', label: '校排' },
+  ].map((rank) => {
+    const points = orderedResults.flatMap((result) => {
+      const value = numberOrNull(result[rank.key])
+      return value === null ? [] : [{ examId: result.examId, examLabel: result.exam?.label || '', value }]
+    })
+    const first = points[0] || null
+    const latest = points.at(-1) || null
+    const previous = points.at(-2) || null
+    const best = points.length ? [...points].sort((left, right) => left.value - right.value)[0] : null
+    return {
+      ...rank,
+      points,
+      first,
+      latest,
+      best,
+      totalImprovement: first && latest && first.examId !== latest.examId ? roundToOne(first.value - latest.value) : null,
+      recentImprovement: previous && latest ? roundToOne(previous.value - latest.value) : null,
+    }
+  })
+  return { subjects, ranks }
 }
 
 const studyTips = {

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAutomaticGradeAnalysis,
   buildGradeTrendSeries,
+  buildLongTermGradeProgress,
   calculateSubjectAverages,
+  compareGradeExams,
+  mapGradeRankVisibility,
   parseGradeWorkbookRows,
 } from './gradeService.js'
 
@@ -73,7 +76,18 @@ describe('成績 Excel 解析', () => {
       [null, '座號', '姓名', '國文', '作文', '英語', '英聽', '英總', '數學', '自然', '歷史', '地理', '公民', '總分', '班排名'],
       [null, 1, '余承澤', null, null, null, null, 0, null, null, null, null, null, 0, 1],
     ]]])
-    expect(() => parseGradeWorkbookRows({ sheets, students })).toThrow('找不到可辨識的段考成績')
+    expect(() => parseGradeWorkbookRows({ sheets, students })).toThrow('找不到可辨識的段考或模擬考成績')
+  })
+
+  it('辨識常見模擬考工作表名稱並匯入成績', () => {
+    const sheets = new Map([['第 1 次模擬考', [
+      [null, '座號', '姓名', '國文', '英語', '數學', '自然', '歷史', '地理', '公民', '加權總分', '班排', '校排'],
+      [null, 1, '余承澤', 82, 79, 88, 76, 80, 85, 83, 1375, 3, 48],
+    ]]])
+    const parsed = parseGradeWorkbookRows({ sheets, students })
+    expect(parsed.exams).toHaveLength(1)
+    expect(parsed.exams[0]).toMatchObject({ key: 'mock-1', examType: 'mock', label: '第一次模擬考', schoolYear: 116 })
+    expect(parsed.exams[0].rows[0]).toMatchObject({ mathScore: 88, classRank: 3, schoolRank: 48 })
   })
 })
 
@@ -127,5 +141,89 @@ describe('個人成績分析', () => {
     expect(analysis.messages.length).toBeLessThanOrEqual(5)
     expect(analysis.messages).toHaveLength(5)
     expect(analysis.messages.join('')).toContain('本次比上一次少')
+  })
+})
+
+describe('成績交叉比較與長期趨勢', () => {
+  const termResult = {
+    examId: 'term-1',
+    exam: { label: '八-1 一段', examType: 'term', sortOrder: 7 },
+    chineseScore: 70,
+    englishScore: 65,
+    mathScore: 60,
+    scienceScore: 75,
+    historyScore: 80,
+    geographyScore: 72,
+    civicsScore: 78,
+    totalScore: 500,
+    weightedTotalScore: 1250,
+    classRank: 12,
+    schoolRank: null,
+  }
+  const mockResult = {
+    examId: 'mock-1',
+    exam: { label: '第一次模擬考', examType: 'mock', sortOrder: 101 },
+    chineseScore: 76,
+    englishScore: 62,
+    mathScore: 70,
+    scienceScore: 75,
+    historyScore: null,
+    geographyScore: 80,
+    civicsScore: 82,
+    totalScore: null,
+    weightedTotalScore: 1310,
+    classRank: 8,
+    schoolRank: 56,
+  }
+
+  it('逐科計算模擬考減段考的分數差距，缺考不比較', () => {
+    const comparison = compareGradeExams(termResult, mockResult)
+    expect(comparison.subjects.find((subject) => subject.key === 'chineseScore')).toMatchObject({ difference: 6 })
+    expect(comparison.subjects.find((subject) => subject.key === 'englishScore')).toMatchObject({ difference: -3 })
+    expect(comparison.subjects.find((subject) => subject.key === 'historyScore')).toMatchObject({ difference: null })
+    expect(comparison.scoreSummaries.find((item) => item.key === 'weightedTotalScore')).toMatchObject({ difference: 60 })
+    expect(comparison.ranks.find((item) => item.key === 'classRank')).toMatchObject({ improvement: 4 })
+    expect(comparison.ranks.find((item) => item.key === 'schoolRank')).toMatchObject({ improvement: null })
+  })
+
+  it('整理各科最初、最近、最佳與長期進退步幅度', () => {
+    const progress = buildLongTermGradeProgress([termResult, mockResult])
+    expect(progress.subjects.find((subject) => subject.key === 'mathScore')).toMatchObject({
+      average: 65,
+      totalChange: 10,
+      recentChange: 10,
+      best: expect.objectContaining({ value: 70 }),
+    })
+    expect(progress.subjects.find((subject) => subject.key === 'historyScore')).toMatchObject({
+      totalChange: null,
+      recentChange: null,
+    })
+  })
+
+  it('排名數字下降時判定為名次進步，並略過尚未提供的校排', () => {
+    const progress = buildLongTermGradeProgress([termResult, mockResult])
+    expect(progress.ranks.find((rank) => rank.key === 'classRank')).toMatchObject({
+      totalImprovement: 4,
+      recentImprovement: 4,
+      best: expect.objectContaining({ value: 8 }),
+    })
+    expect(progress.ranks.find((rank) => rank.key === 'schoolRank')).toMatchObject({
+      totalImprovement: null,
+      recentImprovement: null,
+      first: expect.objectContaining({ value: 56 }),
+    })
+  })
+})
+
+describe('學生端排名顯示設定', () => {
+  it('只有資料庫明確設為 true 時才顯示排名', () => {
+    expect(mapGradeRankVisibility({ show_class_rank: true, show_school_rank: false })).toEqual({
+      showClassRank: true,
+      showSchoolRank: false,
+    })
+    expect(mapGradeRankVisibility(null)).toEqual({
+      showClassRank: false,
+      showSchoolRank: false,
+    })
   })
 })

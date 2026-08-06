@@ -6,6 +6,7 @@ import {
   loadAdminGradeResults,
   parseGradeWorkbook,
   setGradeExamPublished,
+  setGradeRankVisibility,
 } from '../services/gradeService.js'
 
 function scoreText(value, missing = '—') {
@@ -26,6 +27,7 @@ export default function GradeManagement({ dashboard, onNotice }) {
   const [parsing, setParsing] = useState(false)
   const [importing, setImporting] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [savingRankVisibility, setSavingRankVisibility] = useState(false)
 
   const loadOverview = useCallback(async ({ keepSelection = true } = {}) => {
     setLoading(true)
@@ -132,6 +134,29 @@ export default function GradeManagement({ dashboard, onNotice }) {
     }
   }
 
+  async function toggleRankVisibility(rankType) {
+    const current = overview.rankVisibility
+    const next = {
+      showClassRank: rankType === 'class' ? !current.showClassRank : current.showClassRank,
+      showSchoolRank: rankType === 'school' ? !current.showSchoolRank : current.showSchoolRank,
+    }
+    setSavingRankVisibility(true)
+    try {
+      const saved = await setGradeRankVisibility({
+        classId: dashboard.classInfo.id,
+        ...next,
+      })
+      setOverview((value) => ({ ...value, rankVisibility: saved }))
+      const label = rankType === 'class' ? '班排名' : '校排名'
+      const visible = rankType === 'class' ? saved.showClassRank : saved.showSchoolRank
+      onNotice('success', `${label}已設定為學生端${visible ? '顯示' : '隱藏'}。`)
+    } catch (error) {
+      onNotice('error', error.message)
+    } finally {
+      setSavingRankVisibility(false)
+    }
+  }
+
   if (loading || !overview) {
     return <div className="admin-loading"><RefreshCw className="is-spinning" />正在讀取成績管理資料…</div>
   }
@@ -165,8 +190,15 @@ export default function GradeManagement({ dashboard, onNotice }) {
 
       <section className="admin-panel grade-class-panel">
         <div className="admin-panel-heading">
-          <div><span className="panel-icon"><Users /></span><div><h2>全班段考成績</h2><p>選擇已匯入的考試，查詢或發布給學生</p></div></div>
+          <div><span className="panel-icon"><Users /></span><div><h2>全班歷次成績</h2><p>選擇已匯入的段考或模擬考，查詢或發布給學生</p></div></div>
           {selectedExam && <span className={`grade-publish-state ${selectedExam.isPublished ? 'is-published' : ''}`}>{selectedExam.isPublished ? '學生可見' : '尚未發布'}</span>}
+        </div>
+        <div className="grade-rank-visibility-settings">
+          <div><strong>學生端排名顯示</strong><span>只影響學生的個人成績頁，管理端仍保留完整資料。</span></div>
+          <div>
+            <button type="button" className={overview.rankVisibility.showClassRank ? 'is-visible' : ''} disabled={savingRankVisibility} onClick={() => toggleRankVisibility('class')}>{overview.rankVisibility.showClassRank ? <Eye /> : <EyeOff />}班排名：{overview.rankVisibility.showClassRank ? '顯示中' : '已隱藏'}</button>
+            <button type="button" className={overview.rankVisibility.showSchoolRank ? 'is-visible' : ''} disabled={savingRankVisibility} onClick={() => toggleRankVisibility('school')}>{overview.rankVisibility.showSchoolRank ? <Eye /> : <EyeOff />}校排名：{overview.rankVisibility.showSchoolRank ? '顯示中' : '已隱藏'}</button>
+          </div>
         </div>
         <div className="grade-query-toolbar">
           <label><span>選擇考試</span><select value={selectedExamId} onChange={(event) => setSelectedExamId(event.target.value)}><option value="">尚無已匯入成績</option>{overview.exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.label}{exam.isPublished ? '（已發布）' : ''}</option>)}</select></label>

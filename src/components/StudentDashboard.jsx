@@ -282,7 +282,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
         {notice && <div className={`admin-notice is-${notice.type}`}>{notice.message}</div>}
         {activeView === 'helper' && hasHelperRole && <StudentHelperWorkspace dashboard={dashboard} onBack={() => setActiveView('home')} />}
         {activeView === 'calendar' && <CalendarViewer classId={dashboard.classInfo.id} audience="student" />}
-        {activeView === 'grades' && <StudentGrades studentId={dashboard.student.id} />}
+        {activeView === 'grades' && <StudentGrades studentId={dashboard.student.id} classId={dashboard.classInfo.id} />}
         {activeView === 'learning' && <LearningResources classId={dashboard.classInfo.id} />}
         {activeView === 'announcements' && <div className="student-announcement-view">
           <section className="student-home-panel student-announcements-panel">
