@@ -4,6 +4,7 @@ import {
   buildAutomaticGradeAnalysis,
   calculateSubjectAverages,
   gradeSubjectDefinitions,
+  loadGradeRankVisibility,
   loadStudentGrades,
 } from '../services/gradeService.js'
 import GradeTrendChart from './GradeTrendChart.jsx'
@@ -51,20 +52,35 @@ function GradeRadarChart({ result }) {
   )
 }
 
-export default function StudentGrades({ studentId }) {
+export function StudentGradeSelectedResult({ result, rankVisibility }) {
+  return <>
+    <div className="student-grade-selected-grid">
+      <div className="grade-table-scroll"><table className={`grade-score-table is-student${rankVisibility.showClassRank || rankVisibility.showSchoolRank ? ' has-rank' : ''}`}><thead><tr><th>國文</th><th>作文</th><th>英語</th><th>數學</th><th>自然</th><th>歷史</th><th>地理</th><th>公民</th><th>總分</th><th>加權總分</th>{rankVisibility.showClassRank && <th>班排</th>}{rankVisibility.showSchoolRank && <th>校排</th>}</tr></thead><tbody><tr><td>{displayScore(result.chineseScore, '缺考')}</td><td>{displayScore(result.compositionScore, '缺考')}</td><td>{displayScore(result.englishScore, '缺考')}</td><td>{displayScore(result.mathScore, '缺考')}</td><td>{displayScore(result.scienceScore, '缺考')}</td><td>{displayScore(result.historyScore, '缺考')}</td><td>{displayScore(result.geographyScore, '缺考')}</td><td>{displayScore(result.civicsScore, '缺考')}</td><td>{displayScore(result.totalScore)}</td><td>{displayScore(result.weightedTotalScore)}</td>{rankVisibility.showClassRank && <td>{displayScore(result.classRank)}</td>}{rankVisibility.showSchoolRank && <td>{displayScore(result.schoolRank)}</td>}</tr></tbody></table></div>
+      <GradeRadarChart result={result} />
+    </div>
+    <p className="student-grade-rank-notice">依規定不得公開排名，請勿截圖、轉傳或公開本人及他人的排名資料。</p>
+  </>
+}
+
+export default function StudentGrades({ studentId, classId }) {
   const [results, setResults] = useState([])
   const [selectedExamId, setSelectedExamId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [rankVisibility, setRankVisibility] = useState({ showClassRank: false, showSchoolRank: false })
 
   useEffect(() => {
     let active = true
     async function load() {
       setLoading(true)
       try {
-        const data = await loadStudentGrades({ studentId })
+        const [data, visibility] = await Promise.all([
+          loadStudentGrades({ studentId }),
+          loadGradeRankVisibility({ classId }),
+        ])
         if (!active) return
         setResults(data)
+        setRankVisibility(visibility)
         setSelectedExamId((current) => data.some((result) => result.examId === current) ? current : data.at(-1)?.examId || '')
         setError('')
       } catch (loadError) {
@@ -75,7 +91,7 @@ export default function StudentGrades({ studentId }) {
     }
     load()
     return () => { active = false }
-  }, [studentId])
+  }, [classId, studentId])
 
   const selected = results.find((result) => result.examId === selectedExamId)
   const averages = useMemo(() => calculateSubjectAverages(results), [results])
@@ -90,18 +106,15 @@ export default function StudentGrades({ studentId }) {
       <section className="student-home-panel student-grade-detail">
         <div className="student-home-panel-heading"><div><span><BarChart3 /></span><div><h2>個人成績</h2><p>選擇已發布的段考或模擬考</p></div></div><strong>{results.length} 次</strong></div>
         <label className="student-grade-select"><span>選擇考試</span><select value={selectedExamId} onChange={(event) => setSelectedExamId(event.target.value)}>{results.map((result) => <option key={result.examId} value={result.examId}>{result.exam.label}</option>)}</select></label>
-        {selected && <div className="student-grade-selected-grid">
-          <div className="grade-table-scroll"><table className="grade-score-table is-student"><thead><tr><th>國文</th><th>作文</th><th>英語</th><th>數學</th><th>自然</th><th>歷史</th><th>地理</th><th>公民</th><th>總分</th><th>加權總分</th><th>班排</th><th>校排</th></tr></thead><tbody><tr><td>{displayScore(selected.chineseScore, '缺考')}</td><td>{displayScore(selected.compositionScore, '缺考')}</td><td>{displayScore(selected.englishScore, '缺考')}</td><td>{displayScore(selected.mathScore, '缺考')}</td><td>{displayScore(selected.scienceScore, '缺考')}</td><td>{displayScore(selected.historyScore, '缺考')}</td><td>{displayScore(selected.geographyScore, '缺考')}</td><td>{displayScore(selected.civicsScore, '缺考')}</td><td>{displayScore(selected.totalScore)}</td><td>{displayScore(selected.weightedTotalScore)}</td><td>{displayScore(selected.classRank)}</td><td>{displayScore(selected.schoolRank)}</td></tr></tbody></table></div>
-          <GradeRadarChart result={selected} />
-        </div>}
+        {selected && <StudentGradeSelectedResult result={selected} rankVisibility={rankVisibility} />}
       </section>
 
-      <GradeExamComparison results={results} />
+      <GradeExamComparison results={results} rankVisibility={rankVisibility} />
 
       <section className="student-home-panel student-grade-history">
         <div className="student-home-panel-heading"><div><span><TrendingUp /></span><div><h2>歷次七科成績</h2><p>查看折線趨勢，也可用表格核對每次分數</p></div></div></div>
         <GradeTrendChart results={results} />
-        <GradeProgressSummary results={results} />
+        <GradeProgressSummary results={results} rankVisibility={rankVisibility} />
         <div className="grade-table-scroll"><table className="grade-score-table is-history"><thead><tr><th>考試</th>{gradeSubjectDefinitions.map((subject) => <th key={subject.key}>{subject.label}</th>)}</tr></thead><tbody>{results.map((result) => <tr key={result.id}><th scope="row">{result.exam.label}</th>{gradeSubjectDefinitions.map((subject) => <td key={subject.key}>{displayScore(result[subject.key], '缺考')}</td>)}</tr>)}<tr className="grade-average-row"><th scope="row">目前平均</th>{averages.map((subject) => <td key={subject.key}>{displayScore(subject.average)}</td>)}</tr></tbody></table></div>
       </section>
 

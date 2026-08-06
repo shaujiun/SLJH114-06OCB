@@ -13,7 +13,7 @@ function Difference({ value, rank = false }) {
   return <span className={`grade-comparison-difference ${value > 0 ? 'is-better' : 'is-lower'}`}>{label}{rank ? ' 名' : ' 分'}</span>
 }
 
-export default function GradeExamComparison({ results }) {
+export default function GradeExamComparison({ results, rankVisibility = {} }) {
   const termResults = useMemo(() => results.filter((result) => result.exam?.examType === 'term'), [results])
   const mockResults = useMemo(() => results.filter((result) => result.exam?.examType === 'mock'), [results])
   const [termExamId, setTermExamId] = useState(termResults.at(-1)?.examId || '')
@@ -30,6 +30,9 @@ export default function GradeExamComparison({ results }) {
   const termResult = termResults.find((result) => result.examId === termExamId)
   const mockResult = mockResults.find((result) => result.examId === mockExamId)
   const comparison = useMemo(() => compareGradeExams(termResult, mockResult), [termResult, mockResult])
+  const visibleRanks = comparison?.ranks.filter((rank) => (
+    rank.key === 'classRank' ? rankVisibility.showClassRank : rankVisibility.showSchoolRank
+  )) || []
 
   return (
     <section className="student-home-panel student-grade-comparison">
@@ -60,9 +63,9 @@ export default function GradeExamComparison({ results }) {
 
             <div className="grade-comparison-summary">
               {comparison.scoreSummaries.map((item) => <article key={item.key}><span>{item.label}</span><strong>{displayValue(item.termValue)} → {displayValue(item.mockValue)}</strong><Difference value={item.difference} /></article>)}
-              {comparison.ranks.map((item) => <article key={item.key}><span>{item.label}</span><strong>{displayValue(item.termValue)} → {displayValue(item.mockValue)}</strong><Difference value={item.improvement} rank /></article>)}
+              {visibleRanks.map((item) => <article key={item.key}><span>{item.label}</span><strong>{displayValue(item.termValue)} → {displayValue(item.mockValue)}</strong><Difference value={item.improvement} rank /></article>)}
             </div>
-            <p className="grade-comparison-note">差距為「模擬考－段考」；排名的正數代表名次向前。不同考試難度可能不同，請搭配長期趨勢一起判讀。</p>
+            <p className="grade-comparison-note">差距為「模擬考－段考」{visibleRanks.length > 0 ? '；排名的正數代表名次向前' : ''}。不同考試難度可能不同，請搭配長期趨勢一起判讀。</p>
           </>}
         </>
       )}

@@ -323,14 +323,23 @@ function mapResult(row) {
   }
 }
 
+export function mapGradeRankVisibility(row) {
+  return {
+    showClassRank: row?.show_class_rank === true,
+    showSchoolRank: row?.show_school_rank === true,
+  }
+}
+
 export async function loadAdminGradeOverview({ classId }) {
   const client = requireSupabase()
-  const [examsResult, studentsResult] = await Promise.all([
+  const [examsResult, studentsResult, visibilityResult] = await Promise.all([
     client.from('grade_exam_periods').select('*').eq('class_id', classId).order('sort_order'),
     client.from('students').select('id,student_id_code,seat_number,full_name').eq('class_id', classId).eq('is_active', true).order('seat_number'),
+    client.from('classes').select('show_class_rank,show_school_rank').eq('id', classId).single(),
   ])
   if (examsResult.error) throw new Error('無法讀取已匯入的考試清單。')
   if (studentsResult.error) throw new Error('無法讀取成績匯入學生名單。')
+  if (visibilityResult.error) throw new Error('無法讀取學生端排名顯示設定。')
   return {
     exams: (examsResult.data || []).map(mapExam),
     students: (studentsResult.data || []).map((student) => ({
@@ -339,6 +348,37 @@ export async function loadAdminGradeOverview({ classId }) {
       seatNumber: student.seat_number,
       fullName: student.full_name,
     })),
+    rankVisibility: mapGradeRankVisibility(visibilityResult.data),
+  }
+}
+
+export async function loadGradeRankVisibility({ classId }) {
+  if (!classId) return mapGradeRankVisibility(null)
+  const client = requireSupabase()
+  const { data, error } = await client
+    .from('classes')
+    .select('show_class_rank,show_school_rank')
+    .eq('id', classId)
+    .single()
+  if (error) throw new Error('無法讀取排名顯示設定。')
+  return mapGradeRankVisibility(data)
+}
+
+export async function setGradeRankVisibility({ classId, showClassRank, showSchoolRank }) {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('admin_set_grade_rank_visibility', {
+    p_class_id: classId,
+    p_show_class_rank: Boolean(showClassRank),
+    p_show_school_rank: Boolean(showSchoolRank),
+  })
+  if (error) {
+    const message = error.message || ''
+    if (message.includes('permission_denied')) throw new Error('目前帳號沒有調整學生排名顯示的權限。')
+    throw new Error('排名顯示設定儲存失敗，請稍後再試。')
+  }
+  return {
+    showClassRank: data?.showClassRank === true,
+    showSchoolRank: data?.showSchoolRank === true,
   }
 }
 

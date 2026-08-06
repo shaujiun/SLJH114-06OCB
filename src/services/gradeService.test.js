@@ -5,6 +5,7 @@ import {
   buildLongTermGradeProgress,
   calculateSubjectAverages,
   compareGradeExams,
+  mapGradeRankVisibility,
   parseGradeWorkbookRows,
 } from './gradeService.js'
 
@@ -210,6 +211,19 @@ describe('成績交叉比較與長期趨勢', () => {
       totalImprovement: null,
       recentImprovement: null,
       first: expect.objectContaining({ value: 56 }),
+    })
+  })
+})
+
+describe('學生端排名顯示設定', () => {
+  it('只有資料庫明確設為 true 時才顯示排名', () => {
+    expect(mapGradeRankVisibility({ show_class_rank: true, show_school_rank: false })).toEqual({
+      showClassRank: true,
+      showSchoolRank: false,
+    })
+    expect(mapGradeRankVisibility(null)).toEqual({
+      showClassRank: false,
+      showSchoolRank: false,
     })
   })
 })

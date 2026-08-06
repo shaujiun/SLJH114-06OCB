@@ -37,7 +37,7 @@
 | `schools` | 學校基本資料 |
 | `academic_years` | 學年度起訖 |
 | `academic_terms` | 三個學期的起訖 |
-| `classes` | 班級 |
+| `classes` | 班級，以及學生端班排、校排顯示設定 |
 | `contact_book_profiles` | 聯絡簿專用的 Supabase Auth 使用者對應資料、核准狀態；與英文單字系統的 `profiles` 隔離 |
 | `students` | 學生、學號、座號與登入連結 |
 | `student_activation_codes` | 一次性啟用碼雜湊與使用狀態 |
