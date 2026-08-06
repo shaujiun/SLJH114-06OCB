@@ -3,7 +3,7 @@ const activationAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 export function normalizeLoginId(value: unknown) {
   if (typeof value !== 'string') return ''
-  return value.trim().replace(/\s+/g, '').toLowerCase()
+  return value.trim().replace(/\s+/g, '')
 }
 
 export function normalizeActivationCode(value: unknown) {
@@ -34,7 +34,7 @@ export function validateActivationCode(value: string) {
 }
 
 export function validateTeacherUsername(value: string) {
-  return /^[a-z0-9._-]{4,32}$/.test(value)
+  return /^[A-Za-z0-9._-]{4,32}$/.test(value)
 }
 
 export function validateDisplayName(value: unknown) {
@@ -85,7 +85,7 @@ export async function hmacHex(secret: string, value: string) {
 }
 
 export function sharedAccountEmail(username: string) {
-  const localPart = normalizeLoginId(username).replace(/[^a-z0-9._-]/g, '_')
+  const localPart = normalizeLoginId(username).toLowerCase().replace(/[^a-z0-9._-]/g, '_')
   return `${localPart}@vocab-explorer.app`
 }
 

@@ -17,8 +17,9 @@ import {
 } from './security.ts'
 
 describe('Edge Function 帳號正規化', () => {
-  it('學號移除空白並轉小寫', () => {
+  it('帳號移除空白並保留英文大小寫', () => {
     expect(normalizeLoginId(' 115 001 ')).toBe('115001')
+    expect(normalizeLoginId(' Chung ')).toBe('Chung')
   })
 
   it('啟用碼忽略空白與連字號', () => {
@@ -34,6 +35,7 @@ describe('Edge Function 輸入限制', () => {
 
   it('只接受安全的教師帳號', () => {
     expect(validateTeacherUsername('teacher.wang')).toBe(true)
+    expect(validateTeacherUsername('Teacher.Wang')).toBe(true)
     expect(validateTeacherUsername('王老師')).toBe(false)
   })
 

@@ -49,7 +49,7 @@ create table if not exists public.classes (
 
 create table if not exists public.contact_book_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  username citext not null unique,
+  username text not null,
   display_name text not null,
   user_type text not null check (user_type in ('admin', 'teacher', 'student')),
   approval_status text not null default 'pending'
@@ -60,6 +60,9 @@ create table if not exists public.contact_book_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index if not exists contact_book_profiles_username_lower_unique
+  on public.contact_book_profiles (lower(username));
 
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),

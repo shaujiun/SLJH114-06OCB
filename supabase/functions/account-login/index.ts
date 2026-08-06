@@ -45,7 +45,7 @@ Deno.serve(async (request) => {
       request,
       secret: env.rateLimitHmacSecret,
       action: 'account-login',
-      accountKey: `${accountType}:${username}`,
+      accountKey: `${accountType}:${username.toLowerCase()}`,
       limit: 10,
       windowSeconds: 15 * 60,
     })
@@ -63,12 +63,13 @@ Deno.serve(async (request) => {
 
     const { data: profile, error: profileError } = await admin
       .from('contact_book_profiles')
-      .select('display_name,user_type,approval_status,is_active')
+      .select('username,display_name,user_type,approval_status,is_active')
       .eq('id', authData.user.id)
       .single()
 
     if (profileError
       || !profile
+      || profile.username !== username
       || !canUseAccountLogin(accountType, profile.user_type)
       || !profile.is_active) {
       return genericAuthError(401)
