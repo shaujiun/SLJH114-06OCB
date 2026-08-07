@@ -2379,6 +2379,40 @@ footer {
   gap: 22px;
 }
 
+.assignment-heading-actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.assignment-board-launch {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 15px;
+  color: #352b70;
+  background: linear-gradient(135deg, #eee7ff, #fff1c8);
+  border: 1.5px solid var(--ink);
+  border-radius: 13px;
+  box-shadow: 3px 4px 0 var(--ink);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.assignment-board-launch:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 5px 0 var(--ink);
+}
+
+.assignment-board-launch svg {
+  width: 21px;
+  flex: 0 0 auto;
+}
+
 .assignment-layout-grid {
   display: grid;
   grid-template-columns: minmax(330px, 0.85fr) minmax(440px, 1.15fr);
@@ -4267,6 +4301,203 @@ footer {
   width: 18px;
 }
 
+.assignment-board-overlay {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 24px);
+  width: 100%;
+  height: 100dvh;
+  padding: clamp(14px, 2.2vw, 30px);
+  color: #24343b;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(255, 239, 181, 0.72), transparent 25%),
+    radial-gradient(circle at 92% 90%, rgba(205, 232, 255, 0.78), transparent 28%),
+    #f7f5ee;
+  font-family: var(--body-font);
+  overflow: hidden;
+}
+
+.assignment-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.assignment-board-header p,
+.assignment-board-header h1 {
+  margin: 0;
+}
+
+.assignment-board-header p {
+  color: #675397;
+  font-size: clamp(11pt, 1.3vw, 15pt);
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.assignment-board-header h1 {
+  margin-top: 2px;
+  font-family: var(--display-font);
+  font-size: clamp(25pt, 4vw, 42pt);
+  line-height: 1.1;
+}
+
+.assignment-board-header button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 15px;
+  color: #443675;
+  background: white;
+  border: 2px solid #443675;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 14pt;
+  font-weight: 900;
+}
+
+.assignment-board-header button svg {
+  width: 22px;
+}
+
+.assignment-board-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  gap: clamp(14px, 2vw, 25px);
+}
+
+.assignment-board-column {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.92);
+  border: 3px solid var(--ink);
+  border-radius: clamp(18px, 2vw, 28px);
+  box-shadow: 7px 8px 0 var(--ink);
+}
+
+.assignment-board-column > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: clamp(13px, 1.8vw, 22px);
+  border-bottom: 3px solid var(--ink);
+}
+
+.assignment-board-column.is-a > header {
+  background: linear-gradient(135deg, #cdeee8, #dcedff);
+}
+
+.assignment-board-column.is-b > header {
+  background: linear-gradient(135deg, #fff0b8, #f0e2ff);
+}
+
+.assignment-board-column > header > span {
+  display: grid;
+  width: clamp(46px, 5vw, 68px);
+  aspect-ratio: 1;
+  place-items: center;
+  color: white;
+  background: #277d72;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  font-family: var(--display-font);
+  font-size: clamp(20pt, 3vw, 32pt);
+  font-weight: 900;
+}
+
+.assignment-board-column.is-b > header > span {
+  color: #352b70;
+  background: #ffd55f;
+}
+
+.assignment-board-column h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(22pt, 3.2vw, 36pt);
+  line-height: 1.15;
+}
+
+.assignment-board-column header small {
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  font-size: clamp(12pt, 1.3vw, 15pt);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.assignment-board-list {
+  display: grid;
+  align-content: start;
+  gap: clamp(9px, 1.2vw, 15px);
+  min-height: 0;
+  margin: 0;
+  padding: clamp(13px, 1.7vw, 22px);
+  list-style: none;
+  overflow-y: auto;
+}
+
+.assignment-board-list li {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.28fr) minmax(0, 1.72fr);
+  align-items: start;
+  gap: clamp(10px, 1.3vw, 18px);
+  padding: clamp(10px, 1.2vw, 16px);
+  background: #fffdf8;
+  border: 1.5px solid #c9c3b7;
+  border-radius: 14px;
+}
+
+.assignment-board-list li > span {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 9px;
+  color: #17604d;
+  background: #dcf6ed;
+  border-radius: 999px;
+  font-size: clamp(14pt, 1.7vw, 19pt);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.assignment-board-column.is-b .assignment-board-list li > span {
+  color: #5b3f08;
+  background: #fff0b9;
+}
+
+.assignment-board-list li > strong {
+  min-width: 0;
+  font-size: clamp(15pt, 2vw, 23pt);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.assignment-board-empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  min-height: 180px;
+  color: #746d63;
+  font-size: 16pt;
+}
+
+.assignment-board-empty svg {
+  width: 46px;
+  height: 46px;
+}
+
 @media (max-width: 720px) {
   .student-helper-permission-card {
     grid-template-columns: auto minmax(0, 1fr);
@@ -4275,6 +4506,38 @@ footer {
   .student-helper-safety {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+
+  .assignment-board-overlay {
+    display: block;
+    height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .assignment-board-header {
+    margin-bottom: 16px;
+  }
+
+  .assignment-board-header button span {
+    display: none;
+  }
+
+  .assignment-board-header button {
+    width: 48px;
+    padding: 8px;
+  }
+
+  .assignment-board-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-board-column {
+    min-height: 42vh;
+    overflow: visible;
+  }
+
+  .assignment-board-list {
+    overflow: visible;
   }
 }
 
@@ -4301,6 +4564,25 @@ footer {
   .student-helper-permission-icon {
     width: 48px;
     height: 48px;
+  }
+
+  .assignment-heading-actions,
+  .assignment-board-launch {
+    width: 100%;
+  }
+
+  .assignment-board-column > header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .assignment-board-column header small {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .assignment-board-list li {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 }
 

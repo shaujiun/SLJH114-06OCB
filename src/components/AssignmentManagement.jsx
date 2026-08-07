@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Ban, BookOpenCheck, CalendarClock, CheckCheck, Plus, RefreshCw, Send, UserRoundCheck } from 'lucide-react'
+import { Ban, BookOpenCheck, CalendarClock, CheckCheck, MonitorUp, Plus, RefreshCw, Send, UserRoundCheck } from 'lucide-react'
 import { cancelAssignment, loadAssignments, publishAssignment, recordSubmissionCheck, sortAssignmentsByTarget } from '../services/adminService.js'
+import AssignmentBoard from './AssignmentBoard.jsx'
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
 
@@ -35,6 +36,7 @@ export default function AssignmentManagement({
   submissionStage = 'teacher',
   hideTermPicker = false,
   allowQuizReminders = false,
+  allowAssignmentBoard = false,
 }) {
   const isHelperMode = submissionStage === 'helper'
   const firstTerm = dashboard.terms[0]
@@ -52,6 +54,7 @@ export default function AssignmentManagement({
   const [submissionSavingId, setSubmissionSavingId] = useState('')
   const [cancellingId, setCancellingId] = useState('')
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
+  const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
   const [notice, setNotice] = useState(null)
 
   const selectedSubject = useMemo(
@@ -156,7 +159,10 @@ export default function AssignmentManagement({
     <section className="assignment-management">
       <div className="student-page-heading">
         <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '共同、A 組與 B 組作業會依發布當下的學生分組保存對象。'}</p></div>
-        {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
+        {(allowAssignmentBoard || !hideTermPicker) && <div className="assignment-heading-actions">
+          {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={() => setShowAssignmentBoard(true)}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
+          {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
+        </div>}
       </div>
       {notice && <div className={`admin-notice is-${notice.type}`}>{notice.message}</div>}
       {allowQuizReminders && termId && (
@@ -191,6 +197,7 @@ export default function AssignmentManagement({
           </article>)}</div>
         </section>
       </div>
+      {showAssignmentBoard && <AssignmentBoard assignments={assignments} onClose={() => setShowAssignmentBoard(false)} />}
     </section>
   )
 }

@@ -56,6 +56,7 @@ export default function StudentHelperWorkspace({ dashboard, onBack }) {
           submissionStage="helper"
           hideTermPicker
           allowQuizReminders={isHomeworkLeader}
+          allowAssignmentBoard={isHomeworkLeader}
         />
       )}
     </section>
