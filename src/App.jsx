@@ -675,7 +675,7 @@ export default function App() {
       return <StudentDashboard onExit={handleSignOut} learningSystemUrl={learningSystemUrl} />
     }
     if (currentUser.role === 'teacher') {
-      return <TeacherDashboard user={currentUser} onExit={handleSignOut} />
+      return <TeacherDashboard user={currentUser} onExit={handleSignOut} learningSystemUrl={learningSystemUrl} />
     }
     return <SignedInPlaceholder user={currentUser} onExit={handleSignOut} />
   }

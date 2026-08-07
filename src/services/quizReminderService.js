@@ -9,29 +9,39 @@ function normalizeCount(value) {
   return Number.isInteger(number) && number >= 1 && number <= 9 ? number : 0
 }
 
+const QUIZ_REMINDER_SUBJECT_ORDER = [
+  'chinese',
+  'english',
+  'math',
+  'science',
+  'history',
+  'geography',
+  'civics',
+]
+
+const QUIZ_REMINDER_SUBJECT_CODES = new Set(QUIZ_REMINDER_SUBJECT_ORDER)
+
+export function isQuizReminderSubjectCode(subjectCode) {
+  return QUIZ_REMINDER_SUBJECT_CODES.has(subjectCode)
+}
+
 export function quizReminderKey(classSubjectId, target = 'common') {
   return `${classSubjectId}|${target}`
 }
 
 export function splitQuizReminderSubjects(classSubjects) {
-  const sorted = [...(classSubjects || [])].sort((left, right) => (
-    (left.sortOrder ?? 999) - (right.sortOrder ?? 999)
-  ))
+  const sorted = [...(classSubjects || [])]
+    .filter((subject) => isQuizReminderSubjectCode(subject.code))
+    .sort((left, right) => (
+      QUIZ_REMINDER_SUBJECT_ORDER.indexOf(left.code)
+      - QUIZ_REMINDER_SUBJECT_ORDER.indexOf(right.code)
+    ))
   const groupedOrder = { english: 0, math: 1 }
   const groupedSubjects = sorted
     .filter((subject) => ['english', 'math'].includes(subject.code))
     .sort((left, right) => groupedOrder[left.code] - groupedOrder[right.code])
-  const socialSectionCodes = new Set(
-    sorted
-      .filter((subject) => ['history', 'geography', 'civics'].includes(subject.code))
-      .map((subject) => subject.code),
-  )
-  const hasSplitSocialSubjects = socialSectionCodes.size === 3
-  const hiddenQuizSubjectCodes = new Set(['arts', 'health_pe', 'integrative'])
   const otherSubjects = sorted.filter((subject) => (
     !['english', 'math'].includes(subject.code)
-    && !hiddenQuizSubjectCodes.has(subject.code)
-    && !(hasSplitSocialSubjects && subject.code === 'social')
   ))
 
   return {
@@ -44,6 +54,7 @@ export function splitQuizReminderSubjects(classSubjects) {
 export function buildQuizReminderItems(classSubjects, counts) {
   const items = []
   for (const subject of classSubjects || []) {
+    if (!isQuizReminderSubjectCode(subject.code)) continue
     const targets = ['math', 'english'].includes(subject.code)
       ? ['common', 'A', 'B']
       : ['common']
@@ -97,7 +108,9 @@ export function groupStudentQuizReminders(
   const groups = new Map()
   for (const reminder of reminders || []) {
     if (
-      reminder.academicTermId !== academicTermId
+      !isQuizReminderSubjectCode(reminder?.subject?.code)
+      || normalizeCount(reminder?.quizCount) === 0
+      || reminder.academicTermId !== academicTermId
       || reminder.reminderDate !== reminderDate
     ) continue
     const key = reminder.targetType === 'common'
@@ -134,6 +147,31 @@ export function quizReminderDisplayText(reminder) {
     : reminder.subject.name
 }
 
+export function buildQuizReminderBoardGroups(reminders = []) {
+  const visible = (Array.isArray(reminders) ? reminders : [])
+    .filter((reminder) => (
+      isQuizReminderSubjectCode(reminder?.subject?.code)
+      && normalizeCount(reminder?.quizCount) > 0
+    ))
+    .sort((left, right) => (
+      QUIZ_REMINDER_SUBJECT_ORDER.indexOf(left.subject.code)
+      - QUIZ_REMINDER_SUBJECT_ORDER.indexOf(right.subject.code)
+    ))
+
+  function belongsToGroup(reminder, groupCode) {
+    return reminder.targetType === 'common'
+      || (
+        reminder.targetType === 'group'
+        && String(reminder.targetGroupCode || '').toUpperCase() === groupCode
+      )
+  }
+
+  return {
+    A: visible.filter((reminder) => belongsToGroup(reminder, 'A')),
+    B: visible.filter((reminder) => belongsToGroup(reminder, 'B')),
+  }
+}
+
 export async function loadDailyQuizReminderSettings({
   classId,
   academicTermId,
@@ -148,7 +186,9 @@ export async function loadDailyQuizReminderSettings({
     .eq('reminder_date', reminderDate)
     .eq('is_active', true)
   if (error) throw new Error('無法讀取今日測驗提醒，請重新整理後再試。')
-  return (data || []).map(mapQuizReminderRow)
+  return (data || [])
+    .map(mapQuizReminderRow)
+    .filter((row) => isQuizReminderSubjectCode(row.subject.code))
 }
 
 export async function saveDailyQuizReminders({
@@ -203,5 +243,7 @@ export async function loadStudentQuizReminders({ classId }) {
     .eq('is_active', true)
     .order('reminder_date', { ascending: false })
   if (error) throw new Error('無法讀取每日測驗提醒，請重新整理後再試。')
-  return (data || []).map(mapQuizReminderRow)
+  return (data || [])
+    .map(mapQuizReminderRow)
+    .filter((row) => isQuizReminderSubjectCode(row.subject.code))
 }
