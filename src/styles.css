@@ -4394,6 +4394,93 @@ footer {
   border-bottom: 3px solid var(--ink);
 }
 
+.assignment-board-column-body {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.assignment-board-score-reminders {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 14px;
+  padding: clamp(10px, 1.25vw, 15px) clamp(13px, 1.7vw, 22px);
+  background: #f1fbf7;
+  border-bottom: 2px dashed #83b6aa;
+}
+
+.assignment-board-column.is-b .assignment-board-score-reminders {
+  background: #fff9df;
+  border-bottom-color: #d6b85b;
+}
+
+.assignment-board-score-reminders > div,
+.assignment-board-score-reminders > p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.assignment-board-score-reminders h3,
+.assignment-board-score-reminders p {
+  margin: 0;
+}
+
+.assignment-board-score-reminders h3 {
+  color: #17604d;
+  font-family: var(--display-font);
+  font-size: clamp(15pt, 1.8vw, 20pt);
+  white-space: nowrap;
+}
+
+.assignment-board-column.is-b .assignment-board-score-reminders h3 {
+  color: #65490c;
+}
+
+.assignment-board-score-reminders svg {
+  width: 22px;
+  flex: 0 0 auto;
+}
+
+.assignment-board-score-reminders ul {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assignment-board-score-reminders li {
+  padding: 5px 10px;
+  color: #1f5147;
+  background: white;
+  border: 1.5px solid #70a99c;
+  border-radius: 999px;
+  font-size: clamp(14pt, 1.6vw, 18pt);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.assignment-board-column.is-b .assignment-board-score-reminders li {
+  color: #65490c;
+  border-color: #cba73d;
+}
+
+.assignment-board-score-reminders > p {
+  color: #6c6256;
+  font-size: 14pt;
+  font-weight: 900;
+}
+
+.assignment-board-score-reminders.is-error {
+  background: #ffe6e0;
+  border-bottom-color: #c97f70;
+}
+
 .assignment-board-column.is-a > header {
   background: linear-gradient(135deg, #cdeee8, #dcedff);
 }
@@ -4439,6 +4526,7 @@ footer {
 
 .assignment-board-list {
   display: grid;
+  flex: 1 1 auto;
   align-content: start;
   gap: clamp(9px, 1.2vw, 15px);
   min-height: 0;
@@ -4485,6 +4573,7 @@ footer {
 
 .assignment-board-empty {
   display: grid;
+  flex: 1 1 auto;
   align-content: center;
   justify-items: center;
   gap: 10px;
@@ -4539,6 +4628,10 @@ footer {
   .assignment-board-list {
     overflow: visible;
   }
+
+  .assignment-board-column-body {
+    overflow: visible;
+  }
 }
 
 @media (max-width: 560px) {
@@ -4583,6 +4676,10 @@ footer {
   .assignment-board-list li {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .assignment-board-score-reminders {
+    grid-template-columns: 1fr;
   }
 }
 

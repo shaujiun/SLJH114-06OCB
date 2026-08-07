@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildQuizReminderItems,
+  buildQuizReminderBoardGroups,
   groupStudentQuizReminders,
   quizReminderDisplayText,
   quizReminderKey,
@@ -27,6 +28,8 @@ describe('每日測驗提醒', () => {
       { id: 'arts-id', code: 'arts', name: '藝文', sortOrder: 60 },
       { id: 'health-id', code: 'health_pe', name: '健體', sortOrder: 70 },
       { id: 'integrative-id', code: 'integrative', name: '綜合', sortOrder: 80 },
+      { id: 'other-id', code: 'other', name: '其他', sortOrder: 90 },
+      { id: 'chemical-id', code: 'chemical_engineering', name: '化工', sortOrder: 100 },
     ])
 
     expect(arranged.groupedSubjects.map((subject) => subject.code)).toEqual(['english', 'math'])
@@ -37,14 +40,20 @@ describe('每日測驗提醒', () => {
       'civics',
     ])
     expect(arranged.visibleSubjects.some((subject) => subject.code === 'social')).toBe(false)
+    expect(arranged.visibleSubjects.some((subject) => subject.code === 'other')).toBe(false)
+    expect(arranged.visibleSubjects.some((subject) => subject.code === 'chemical_engineering')).toBe(false)
   })
 
   it('一般科目只建立共同提醒，英語可分共同、A、B 組', () => {
-    const items = buildQuizReminderItems(subjects, {
+    const items = buildQuizReminderItems([
+      ...subjects,
+      { id: 'chemical-id', code: 'chemical_engineering', name: '化工' },
+    ], {
       [quizReminderKey('chinese-id')]: 3,
       [quizReminderKey('english-id', 'A')]: 2,
       [quizReminderKey('english-id', 'B')]: 1,
       [quizReminderKey('science-id')]: 0,
+      [quizReminderKey('chemical-id')]: 2,
     })
     expect(items).toEqual([
       {
@@ -88,7 +97,7 @@ describe('每日測驗提醒', () => {
         targetType: 'common',
         targetGroupCode: null,
         quizCount: 3,
-        subject: { name: '國文' },
+        subject: { code: 'chinese', name: '國文' },
       },
       {
         id: '2',
@@ -97,7 +106,7 @@ describe('每日測驗提醒', () => {
         targetType: 'group',
         targetGroupCode: 'B',
         quizCount: 2,
-        subject: { name: '英語' },
+        subject: { code: 'english', name: '英語' },
       },
       {
         id: '3',
@@ -106,7 +115,7 @@ describe('每日測驗提醒', () => {
         targetType: 'common',
         targetGroupCode: null,
         quizCount: 1,
-        subject: { name: '自然' },
+        subject: { code: 'science', name: '自然' },
       },
     ]
     const groups = groupStudentQuizReminders(
@@ -127,5 +136,44 @@ describe('每日測驗提醒', () => {
       subject: { name: '國文' },
       quizCount: 3,
     })).toBe('國文 ×3')
+  })
+
+  it('全畫面看板只顯示當組需要登記的七科提醒', () => {
+    const common = {
+      id: 'common-chinese',
+      targetType: 'common',
+      quizCount: 1,
+      subject: { code: 'chinese', name: '國文' },
+    }
+    const englishA = {
+      id: 'english-a',
+      targetType: 'group',
+      targetGroupCode: 'A',
+      quizCount: 2,
+      subject: { code: 'english', name: '英語' },
+    }
+    const englishBZero = {
+      id: 'english-b',
+      targetType: 'group',
+      targetGroupCode: 'B',
+      quizCount: 0,
+      subject: { code: 'english', name: '英語' },
+    }
+    const unsupported = {
+      id: 'chemical',
+      targetType: 'common',
+      quizCount: 1,
+      subject: { code: 'chemical_engineering', name: '化工' },
+    }
+
+    const groups = buildQuizReminderBoardGroups([
+      common,
+      englishA,
+      englishBZero,
+      unsupported,
+    ])
+
+    expect(groups.A.map((item) => item.id)).toEqual(['common-chinese', 'english-a'])
+    expect(groups.B.map((item) => item.id)).toEqual(['common-chinese'])
   })
 })

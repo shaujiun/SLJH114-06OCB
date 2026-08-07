@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ban, BookOpenCheck, CalendarClock, CheckCheck, MonitorUp, Plus, RefreshCw, Send, UserRoundCheck } from 'lucide-react'
 import { cancelAssignment, loadAssignments, publishAssignment, recordSubmissionCheck, sortAssignmentsByTarget } from '../services/adminService.js'
+import { loadDailyQuizReminderSettings } from '../services/quizReminderService.js'
 import AssignmentBoard from './AssignmentBoard.jsx'
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
@@ -11,6 +12,11 @@ function nextDay(date) {
   value.setDate(value.getDate() + 1)
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000)
   return local.toISOString().slice(0, 16)
+}
+
+function localDateString(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
 }
 
 function formatCompactDateTime(value) {
@@ -55,6 +61,9 @@ export default function AssignmentManagement({
   const [cancellingId, setCancellingId] = useState('')
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
+  const [boardQuizReminders, setBoardQuizReminders] = useState([])
+  const [boardQuizReminderLoading, setBoardQuizReminderLoading] = useState(false)
+  const [boardQuizReminderError, setBoardQuizReminderError] = useState('')
   const [notice, setNotice] = useState(null)
 
   const selectedSubject = useMemo(
@@ -155,12 +164,31 @@ export default function AssignmentManagement({
     }
   }
 
+  async function openAssignmentBoard() {
+    setShowAssignmentBoard(true)
+    setBoardQuizReminders([])
+    setBoardQuizReminderError('')
+    setBoardQuizReminderLoading(true)
+    try {
+      const rows = await loadDailyQuizReminderSettings({
+        classId: dashboard.classInfo.id,
+        academicTermId: termId,
+        reminderDate: localDateString(),
+      })
+      setBoardQuizReminders(rows)
+    } catch (error) {
+      setBoardQuizReminderError(error.message)
+    } finally {
+      setBoardQuizReminderLoading(false)
+    }
+  }
+
   return (
     <section className="assignment-management">
       <div className="student-page-heading">
         <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '共同、A 組與 B 組作業會依發布當下的學生分組保存對象。'}</p></div>
         {(allowAssignmentBoard || !hideTermPicker) && <div className="assignment-heading-actions">
-          {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={() => setShowAssignmentBoard(true)}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
+          {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={openAssignmentBoard}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
           {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
         </div>}
       </div>
@@ -197,7 +225,13 @@ export default function AssignmentManagement({
           </article>)}</div>
         </section>
       </div>
-      {showAssignmentBoard && <AssignmentBoard assignments={assignments} onClose={() => setShowAssignmentBoard(false)} />}
+      {showAssignmentBoard && <AssignmentBoard
+        assignments={assignments}
+        quizReminders={boardQuizReminders}
+        quizReminderLoading={boardQuizReminderLoading}
+        quizReminderError={boardQuizReminderError}
+        onClose={() => setShowAssignmentBoard(false)}
+      />}
     </section>
   )
 }

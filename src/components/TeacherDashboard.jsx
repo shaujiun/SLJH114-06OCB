@@ -14,7 +14,7 @@ import AssignmentManagement from './AssignmentManagement.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
 import LearningResourceManagement from './LearningResourceManagement.jsx'
 
-export default function TeacherDashboard({ user, onExit }) {
+export default function TeacherDashboard({ user, onExit, learningSystemUrl }) {
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -73,6 +73,18 @@ export default function TeacherDashboard({ user, onExit }) {
             )}
           </div>
           <div className="admin-topbar-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              aria-label="前往各科學習系統"
+              title="前往各科學習系統"
+              onClick={() => {
+                if (learningSystemUrl) window.location.assign(learningSystemUrl)
+                else setNotice({ type: 'error', message: '各科學習系統網址尚未設定。' })
+              }}
+            >
+              <GraduationCap aria-hidden="true" />各科學習系統
+            </button>
             <button className="admin-icon-button" type="button" aria-label="重新整理教師工作台" disabled={refreshing} onClick={() => load({ quiet: true })}>
               <RefreshCw className={refreshing ? 'is-spinning' : ''} aria-hidden="true" />
             </button>

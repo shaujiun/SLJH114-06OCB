@@ -132,7 +132,7 @@ export default function DailyQuizReminderManagement({
         <div>
           <span><ClipboardPenLine aria-hidden="true" /></span>
           <div>
-            <h3>今日測驗成績提醒</h3>
+            <h3>今日成績提醒</h3>
             <p>只登記各科測驗次數，提醒學生填入學校紙本聯絡簿，不保存實際分數。</p>
           </div>
         </div>
