@@ -4,6 +4,26 @@ const ANNOUNCEMENT_BUCKET = 'contact-book-announcements'
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
+export function announcementUploadErrorMessage(error) {
+  const status = Number(error?.statusCode || error?.status || 0)
+  const message = String(error?.message || error?.error || '').toLowerCase()
+  if (
+    status === 401
+    || status === 403
+    || message.includes('row-level security')
+    || message.includes('unauthorized')
+  ) {
+    return '公告圖片上傳權限驗證失敗，請重新登入後再試。'
+  }
+  if (status === 413 || message.includes('maximum allowed size') || message.includes('too large')) {
+    return '公告圖片不可超過 5 MB。'
+  }
+  if (message.includes('mime type') || message.includes('content type')) {
+    return '公告圖片只接受 JPG、PNG 或 WebP。'
+  }
+  return '公告圖片上傳失敗，請稍後再試。'
+}
+
 function extensionFor(file) {
   if (file.type === 'image/png') return 'png'
   if (file.type === 'image/webp') return 'webp'
@@ -85,7 +105,7 @@ export async function createAnnouncement({
     const { error: uploadError } = await client.storage
       .from(ANNOUNCEMENT_BUCKET)
       .upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false })
-    if (uploadError) throw new Error('公告圖片上傳失敗，請確認圖片格式與大小。')
+    if (uploadError) throw new Error(announcementUploadErrorMessage(uploadError))
   }
 
   const { data, error } = await client

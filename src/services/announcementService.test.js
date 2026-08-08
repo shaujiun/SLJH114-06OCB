@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { requireSupabase } from '../lib/supabase.js'
 import {
+  announcementUploadErrorMessage,
   createClientId,
   mapAnnouncementRow,
   markAnnouncementRead,
@@ -63,6 +64,26 @@ describe('公告資料驗證', () => {
       id: 'announcement-id', scope: 'school', title: '校慶', content: '',
       imageUrl: 'signed-url', imageAltText: '校慶', isActive: true,
     })
+  })
+})
+
+describe('公告圖片上傳錯誤', () => {
+  it('辨識管理者權限驗證失敗', () => {
+    expect(announcementUploadErrorMessage({
+      statusCode: 403,
+      message: 'new row violates row-level security policy',
+    })).toBe('公告圖片上傳權限驗證失敗，請重新登入後再試。')
+  })
+
+  it('辨識檔案大小與格式錯誤', () => {
+    expect(announcementUploadErrorMessage({
+      statusCode: 413,
+      message: 'The object exceeded the maximum allowed size',
+    })).toBe('公告圖片不可超過 5 MB。')
+    expect(announcementUploadErrorMessage({
+      statusCode: 400,
+      message: 'mime type image/gif is not supported',
+    })).toBe('公告圖片只接受 JPG、PNG 或 WebP。')
   })
 })
 
