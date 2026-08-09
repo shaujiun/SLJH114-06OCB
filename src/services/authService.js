@@ -8,6 +8,9 @@ const functionNames = {
   registerTeacher: import.meta.env.VITE_TEACHER_REGISTRATION_FUNCTION || 'teacher-register',
 }
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
+
 async function readFunctionError(error) {
   const context = error?.context
   if (context && typeof context.clone === 'function') {
@@ -40,6 +43,36 @@ async function invoke(functionName, body) {
     throw new Error(data.error)
   }
 
+  return data
+}
+
+async function invokePublic(functionName, body) {
+  if (!supabaseUrl || !supabasePublishableKey) {
+    requireSupabase()
+  }
+
+  let response
+  try {
+    response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        apikey: supabasePublishableKey,
+        'Content-Type': 'application/json',
+        'x-client-info': 'sljh-contact-book/0.2.0',
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+      credentials: 'omit',
+    })
+  } catch {
+    throw new Error('無法連上密碼重設服務，請確認網路後重新整理頁面再試。')
+  }
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(data?.error || '密碼重設服務暫時無法使用，請稍後再試。')
+  }
+  if (data?.error) throw new Error(data.error)
   return data
 }
 
@@ -82,7 +115,7 @@ export async function activateStudent({ studentId, activationCode, password }) {
 }
 
 export async function resetStudentPassword({ studentId, resetCode, password }) {
-  const data = await invoke(functionNames.resetStudentPassword, {
+  const data = await invokePublic(functionNames.resetStudentPassword, {
     studentId: studentId.trim(),
     resetCode: resetCode.trim(),
     password,
