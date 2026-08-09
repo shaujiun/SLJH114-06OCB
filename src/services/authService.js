@@ -8,12 +8,32 @@ const functionNames = {
   registerTeacher: import.meta.env.VITE_TEACHER_REGISTRATION_FUNCTION || 'teacher-register',
 }
 
+async function readFunctionError(error) {
+  const context = error?.context
+  if (context && typeof context.clone === 'function') {
+    try {
+      const payload = await context.clone().json()
+      if (typeof payload?.error === 'string' && payload.error.trim()) {
+        return payload.error.trim()
+      }
+    } catch {
+      // The response may not be JSON. Fall back to the client error below.
+    }
+  }
+
+  const message = error?.message?.trim()
+  if (message && message !== 'Edge Function returned a non-2xx status code') {
+    return message
+  }
+  return '系統目前無法完成操作，請稍後再試或通知導師。'
+}
+
 async function invoke(functionName, body) {
   const client = requireSupabase()
   const { data, error } = await client.functions.invoke(functionName, { body })
 
   if (error) {
-    throw new Error(error.message || '連線失敗，請稍後再試。')
+    throw new Error(await readFunctionError(error))
   }
 
   if (data?.error) {
