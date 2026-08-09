@@ -31,7 +31,9 @@ Deno.serve(async (request) => {
     if (!validateStudentId(studentId)
       || !validateActivationCode(resetCode)
       || !validatePassword(password)) {
-      return genericAuthError()
+      return jsonResponse({
+        error: '請確認學號與重設碼；新密碼須至少 8 個字元，並同時包含英文字母與數字。',
+      }, 400)
     }
 
     const { env, admin, publicClient } = createFunctionClients()
@@ -56,7 +58,14 @@ Deno.serve(async (request) => {
       { p_student_id_code: studentId, p_code_hash: codeHash },
     )
     const result = reset?.[0]
-    if (consumeError || !result?.profile_id) return genericAuthError()
+    if (consumeError || !result?.profile_id) {
+      if (consumeError) {
+        console.error('student-reset-password reset validation failed', consumeError.message)
+      }
+      return jsonResponse({
+        error: '重設碼不正確、已使用或已超過 24 小時，請導師重新產生一組重設碼。',
+      }, 400)
+    }
 
     const { error: updateError } = await admin.auth.admin.updateUserById(
       result.profile_id,
@@ -64,14 +73,22 @@ Deno.serve(async (request) => {
     )
     if (updateError) {
       console.error('student-reset-password auth update failed', updateError.message)
-      return jsonResponse({ error: '密碼更新失敗，請請導師重新產生重設碼。' }, 500)
+      return jsonResponse({ error: '密碼更新失敗，請導師重新產生一組重設碼後再試。' }, 500)
     }
 
     const { data: signedIn, error: signInError } = await publicClient.auth.signInWithPassword({
       email: sharedAccountEmail(studentId),
       password,
     })
-    if (signInError || !signedIn.session) return genericAuthError(500)
+    if (signInError || !signedIn.session) {
+      console.error(
+        'student-reset-password automatic sign-in failed',
+        signInError?.message || 'session_missing',
+      )
+      return jsonResponse({
+        error: '新密碼已設定完成，但自動登入失敗；請返回登入頁，使用學號與新密碼登入。',
+      }, 409)
+    }
 
     return jsonResponse({
       ok: true,
