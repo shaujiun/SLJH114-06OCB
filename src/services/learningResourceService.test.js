@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   learningResourceUploadErrorMessage,
+  mapLearningResourceRow,
   normalizeHttpUrl,
   validateLearningResourceInput,
   videoEmbedInfo,
@@ -85,6 +86,21 @@ describe('學習資源輸入', () => {
       ...base,
       audienceScope: 'all_a',
     })).toThrow('顯示對象')
+  })
+})
+
+describe('學習資源封面讀取', () => {
+  it('保留封面讀取失敗訊息，不會誤認成沒有封面', () => {
+    expect(mapLearningResourceRow({
+      id: 'resource-id',
+      resource_type: 'method',
+      title: '學習方法',
+      image_path: 'class-id/user-id/resource-id/cover.jpg',
+    }, null, '封面讀取失敗')).toMatchObject({
+      imagePath: 'class-id/user-id/resource-id/cover.jpg',
+      imageUrl: null,
+      imageError: '封面讀取失敗',
+    })
   })
 })
 

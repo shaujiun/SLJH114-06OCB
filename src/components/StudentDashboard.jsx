@@ -127,6 +127,7 @@ function StudentAnnouncementCard({ announcement, reading, onRead }) {
   return (
     <article className={`student-announcement-card ${announcement.readAt ? 'is-read' : 'is-unread'}`}>
       {announcement.imageUrl && <img src={announcement.imageUrl} alt={announcement.imageAltText} />}
+      {announcement.imageError && <p className="private-image-error">{announcement.imageError}</p>}
       <div className="student-announcement-body">
         <div className="student-announcement-topline">
           <span className={`announcement-scope is-${announcement.scope}`}>{announcement.scope === 'school' ? '全校公告' : '班級公告'}</span>

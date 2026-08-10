@@ -26,6 +26,7 @@ export default function LearningResourceCard({ resource, preview = false }) {
           alt={resource.imageAltText || resource.title}
         />
       )}
+      {resource.imageError && <p className="private-image-error">{resource.imageError}</p>}
       <div className="learning-resource-card-body">
         <div className="learning-resource-card-meta">
           <span className="learning-resource-type">

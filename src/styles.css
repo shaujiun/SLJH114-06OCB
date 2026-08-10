@@ -3576,6 +3576,16 @@ footer {
   border-bottom: 1px solid #ddd5c8;
 }
 
+.private-image-error {
+  margin: 0;
+  padding: 11px 14px;
+  color: #7a3f28;
+  background: #fff0e5;
+  border-bottom: 1px solid #e6b99e;
+  font-weight: 900;
+  text-align: center;
+}
+
 .announcement-admin-body {
   display: grid;
   gap: 10px;

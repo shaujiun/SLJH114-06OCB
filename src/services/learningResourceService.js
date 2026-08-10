@@ -170,7 +170,7 @@ export function validateLearningResourceInput({
   }
 }
 
-export function mapLearningResourceRow(row, imageUrl = null) {
+export function mapLearningResourceRow(row, imageUrl = null, imageError = '') {
   const classSubject = relation(row.class_subjects)
   const subject = relation(classSubject?.subjects)
   const creator = relation(row.contact_book_profiles)
@@ -194,6 +194,7 @@ export function mapLearningResourceRow(row, imageUrl = null) {
     imagePath: row.image_path,
     imageAltText: row.image_alt_text || row.title,
     imageUrl,
+    imageError,
     publishedAt: row.published_at,
     isPinned: row.is_pinned,
     sortOrder: row.sort_order,
@@ -212,10 +213,16 @@ export function mapLearningResourceRow(row, imageUrl = null) {
 
 async function signedImageUrls(client, rows) {
   const paths = [...new Set((rows || []).map((row) => row.image_path).filter(Boolean))]
-  if (!paths.length) return new Map()
+  if (!paths.length) return { urls: new Map(), failedPaths: new Set() }
   const { data, error } = await client.storage.from(RESOURCE_BUCKET).createSignedUrls(paths, 3600)
-  if (error) return new Map()
-  return new Map((data || []).map((item) => [item.path, item.signedUrl]))
+  if (error) return { urls: new Map(), failedPaths: new Set(paths) }
+  const urls = new Map((data || [])
+    .filter((item) => item.path && item.signedUrl && !item.error)
+    .map((item) => [item.path, item.signedUrl]))
+  return {
+    urls,
+    failedPaths: new Set(paths.filter((path) => !urls.has(path))),
+  }
 }
 
 const resourceSelect = `
@@ -247,10 +254,11 @@ async function loadResourceRows(query) {
   const { data, error } = await query
   if (error) throw new Error('無法讀取學習資源，請重新整理後再試。')
   const rows = data || []
-  const imageUrls = await signedImageUrls(client, rows)
+  const { urls: imageUrls, failedPaths } = await signedImageUrls(client, rows)
   return rows.map((row) => mapLearningResourceRow(
     row,
     imageUrls.get(row.image_path) || null,
+    failedPaths.has(row.image_path) ? '封面圖片暫時無法讀取，請重新整理後再試。' : '',
   ))
 }
 

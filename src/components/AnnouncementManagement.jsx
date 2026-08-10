@@ -129,6 +129,7 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
             {announcements.map((item) => (
               <article className={!item.isActive ? 'is-inactive' : ''} key={item.id}>
                 {item.imageUrl && <img src={item.imageUrl} alt={item.imageAltText} />}
+                {item.imageError && <p className="private-image-error">{item.imageError}</p>}
                 <div className="announcement-admin-body">
                   <div className="announcement-admin-topline">
                     <span className={`announcement-scope is-${item.scope}`}>{item.scope === 'school' ? '全校公告' : '班級公告'}</span>

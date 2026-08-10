@@ -65,6 +65,16 @@ describe('公告資料驗證', () => {
       imageUrl: 'signed-url', imageAltText: '校慶', isActive: true,
     })
   })
+
+  it('保留私有圖片讀取失敗訊息，不會誤認成沒有附圖', () => {
+    expect(mapAnnouncementRow({
+      id: 'announcement-id', title: '通知', image_path: 'class-id/a/photo.png',
+    }, null, '圖片讀取失敗')).toMatchObject({
+      imagePath: 'class-id/a/photo.png',
+      imageUrl: null,
+      imageError: '圖片讀取失敗',
+    })
+  })
 })
 
 describe('公告圖片上傳錯誤', () => {
