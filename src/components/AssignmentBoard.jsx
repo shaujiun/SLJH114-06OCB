@@ -4,7 +4,7 @@ import { BookOpenCheck, ClipboardPenLine, RefreshCw, X } from 'lucide-react'
 import { buildAssignmentBoardGroups } from '../lib/assignmentBoard.js'
 import {
   buildQuizReminderBoardGroups,
-  quizReminderDisplayText,
+  quizReminderBoardDisplayText,
 } from '../services/quizReminderService.js'
 
 function QuizReminderSection({ reminders, loading, error }) {
@@ -21,7 +21,7 @@ function QuizReminderSection({ reminders, loading, error }) {
       {!loading && !error && reminders.length > 0 && (
         <ul>
           {reminders.map((reminder) => (
-            <li key={reminder.id}>{quizReminderDisplayText(reminder)}</li>
+            <li key={reminder.id}>{quizReminderBoardDisplayText(reminder)}</li>
           ))}
         </ul>
       )}
