@@ -147,6 +147,12 @@ export function quizReminderDisplayText(reminder) {
     : reminder.subject.name
 }
 
+export function quizReminderBoardDisplayText(reminder) {
+  if (!reminder?.subject?.name) return ''
+  const quizCount = normalizeCount(reminder.quizCount)
+  return quizCount > 0 ? `${reminder.subject.name} ×${quizCount}` : ''
+}
+
 export function buildQuizReminderBoardGroups(reminders = []) {
   const visible = (Array.isArray(reminders) ? reminders : [])
     .filter((reminder) => (

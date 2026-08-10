@@ -3,6 +3,7 @@ import {
   buildQuizReminderItems,
   buildQuizReminderBoardGroups,
   groupStudentQuizReminders,
+  quizReminderBoardDisplayText,
   quizReminderDisplayText,
   quizReminderKey,
   reminderCountsFromRows,
@@ -175,5 +176,20 @@ describe('每日測驗提醒', () => {
 
     expect(groups.A.map((item) => item.id)).toEqual(['common-chinese', 'english-a'])
     expect(groups.B.map((item) => item.id)).toEqual(['common-chinese'])
+  })
+
+  it('全畫面看板明確顯示每科測驗次數，0 次不產生文字', () => {
+    expect(quizReminderBoardDisplayText({
+      subject: { name: '自然' },
+      quizCount: 1,
+    })).toBe('自然 ×1')
+    expect(quizReminderBoardDisplayText({
+      subject: { name: '國文' },
+      quizCount: 3,
+    })).toBe('國文 ×3')
+    expect(quizReminderBoardDisplayText({
+      subject: { name: '英語' },
+      quizCount: 0,
+    })).toBe('')
   })
 })
