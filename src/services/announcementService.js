@@ -66,7 +66,7 @@ export function validateAnnouncementInput({ scope, title, content, expiresAt, im
   return { title: normalizedTitle, content: normalizedContent }
 }
 
-export function mapAnnouncementRow(row, imageUrl = null) {
+export function mapAnnouncementRow(row, imageUrl = null, imageError = '') {
   return {
     id: row.id,
     classId: row.class_id,
@@ -76,6 +76,7 @@ export function mapAnnouncementRow(row, imageUrl = null) {
     imagePath: row.image_path,
     imageAltText: row.image_alt_text || row.title,
     imageUrl,
+    imageError,
     publishedAt: row.published_at,
     expiresAt: row.expires_at,
     isActive: row.is_active,
@@ -84,10 +85,16 @@ export function mapAnnouncementRow(row, imageUrl = null) {
 
 async function signedImageUrls(client, rows) {
   const paths = [...new Set(rows.map((row) => row.image_path).filter(Boolean))]
-  if (!paths.length) return new Map()
+  if (!paths.length) return { urls: new Map(), failedPaths: new Set() }
   const { data, error } = await client.storage.from(ANNOUNCEMENT_BUCKET).createSignedUrls(paths, 3600)
-  if (error) return new Map()
-  return new Map(data.map((item) => [item.path, item.signedUrl]))
+  if (error) return { urls: new Map(), failedPaths: new Set(paths) }
+  const urls = new Map((data || [])
+    .filter((item) => item.path && item.signedUrl && !item.error)
+    .map((item) => [item.path, item.signedUrl]))
+  return {
+    urls,
+    failedPaths: new Set(paths.filter((path) => !urls.has(path))),
+  }
 }
 
 export async function createAnnouncement({
@@ -162,13 +169,17 @@ export async function loadAdminAnnouncements({ classId }) {
     reads = data || []
   }
 
-  const imageUrls = await signedImageUrls(client, rows)
+  const { urls: imageUrls, failedPaths } = await signedImageUrls(client, rows)
   return rows.map((row) => {
     const readMap = new Map(
       reads.filter((item) => item.announcement_id === row.id).map((item) => [item.student_id, item.read_at]),
     )
     return {
-      ...mapAnnouncementRow(row, imageUrls.get(row.image_path) || null),
+      ...mapAnnouncementRow(
+        row,
+        imageUrls.get(row.image_path) || null,
+        failedPaths.has(row.image_path) ? '公告圖片暫時無法讀取，請重新整理後再試。' : '',
+      ),
       readStudents: students.filter((student) => readMap.has(student.id)).map((student) => ({
         id: student.id,
         seatNumber: student.seat_number,
@@ -211,9 +222,13 @@ export async function loadStudentAnnouncements({ classId, studentId }) {
     !row.expires_at || new Date(row.expires_at).getTime() > new Date(now).getTime()
   ))
   const readMap = new Map((readsResult.data || []).map((item) => [item.announcement_id, item.read_at]))
-  const imageUrls = await signedImageUrls(client, rows)
+  const { urls: imageUrls, failedPaths } = await signedImageUrls(client, rows)
   return rows.map((row) => ({
-    ...mapAnnouncementRow(row, imageUrls.get(row.image_path) || null),
+    ...mapAnnouncementRow(
+      row,
+      imageUrls.get(row.image_path) || null,
+      failedPaths.has(row.image_path) ? '公告圖片暫時無法讀取，請重新整理後再試。' : '',
+    ),
     readAt: readMap.get(row.id) || null,
   }))
 }
