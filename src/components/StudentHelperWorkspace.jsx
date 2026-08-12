@@ -57,6 +57,7 @@ export default function StudentHelperWorkspace({ dashboard, onBack }) {
           hideTermPicker
           allowQuizReminders={isHomeworkLeader}
           allowAssignmentBoard={isHomeworkLeader}
+          filterByOutstandingDate
         />
       )}
     </section>

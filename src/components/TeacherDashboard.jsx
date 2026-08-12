@@ -94,7 +94,7 @@ export default function TeacherDashboard({ user, onExit, learningSystemUrl }) {
 
         {notice && <div className={`admin-notice is-${notice.type}`}>{notice.message}</div>}
         {loading && <div className="admin-loading"><RefreshCw className="is-spinning" aria-hidden="true" />正在讀取任教資料…</div>}
-        {!loading && dashboard && activeSection === 'assignments' && <AssignmentManagement dashboard={dashboard} />}
+        {!loading && dashboard && activeSection === 'assignments' && <AssignmentManagement dashboard={dashboard} filterByOutstandingDate />}
         {!loading && dashboard && activeSection === 'calendar' && <CalendarViewer classId={dashboard.classInfo.id} audience="teacher" />}
         {!loading && dashboard && activeSection === 'learning' && <LearningResourceManagement dashboard={dashboard} onNotice={handleSectionNotice} teacherMode />}
       </main>

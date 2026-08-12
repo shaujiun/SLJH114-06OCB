@@ -6,6 +6,9 @@ import {
   cancelAssignment,
   createStudentPasswordReset,
   createStudent,
+  filterAssignmentsByDate,
+  getAssignmentPublishedDate,
+  getOutstandingAssignmentDates,
   isFollowUpOverdue,
   mapSubmissionTrackingData,
   mapClassSubjectRow,
@@ -154,6 +157,32 @@ describe('作業發布服務', () => {
       { id: 'common-new', targetType: 'common', targetGroupCode: null, dueAt: '2026-08-15T08:00:00+08:00' },
     ])
     expect(sorted.map((item) => item.id)).toEqual(['common-new', 'common-old', 'a-new', 'b-new'])
+  })
+
+  it('日期選單依實際發布日，只保留仍有學生未繳交的日期', () => {
+    const assignments = [
+      { id: 'complete-only', assignmentDate: '2026-08-13', publishedAt: '2026-08-10T09:00:00+08:00', isFullySubmitted: true },
+      { id: 'complete-same-day', assignmentDate: '2026-08-13', publishedAt: '2026-08-11T09:00:00+08:00', isFullySubmitted: true },
+      { id: 'pending-same-day', assignmentDate: '2026-08-14', publishedAt: '2026-08-11T10:00:00+08:00', isFullySubmitted: false },
+      { id: 'pending-newer', assignmentDate: '2026-08-15', publishedAt: '2026-08-12T09:00:00+08:00', isFullySubmitted: false },
+    ]
+
+    expect(getOutstandingAssignmentDates(assignments)).toEqual(['2026-08-12', '2026-08-11'])
+  })
+
+  it('選定發布日後會顯示當天發布的全部作業', () => {
+    const assignments = [
+      { id: 'complete-same-day', assignmentDate: '2026-08-13', publishedAt: '2026-08-11T09:00:00+08:00', isFullySubmitted: true },
+      { id: 'pending-same-day', assignmentDate: '2026-08-14', publishedAt: '2026-08-11T10:00:00+08:00', isFullySubmitted: false },
+      { id: 'other-day', assignmentDate: '2026-08-12', publishedAt: '2026-08-12T09:00:00+08:00', isFullySubmitted: false },
+    ]
+
+    expect(filterAssignmentsByDate(assignments, '2026-08-11').map((item) => item.id))
+      .toEqual(['complete-same-day', 'pending-same-day'])
+  })
+
+  it('沒有發布時間的舊資料會安全沿用作業日期', () => {
+    expect(getAssignmentPublishedDate({ assignmentDate: '2026-08-10' })).toBe('2026-08-10')
   })
 
   it('共同作業不傳分組代碼', async () => {
