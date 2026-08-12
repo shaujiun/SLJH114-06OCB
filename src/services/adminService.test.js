@@ -15,6 +15,7 @@ import {
   regenerateStudentActivation,
   publishAssignment,
   recordSubmissionCheck,
+  restoreAssignment,
   sortAssignmentsByTarget,
   updateClassSubjects,
   updateStudentSettings,
@@ -218,6 +219,15 @@ describe('作業發布服務', () => {
     requireSupabase.mockReturnValue({ rpc })
     await cancelAssignment({ assignmentId: 'assignment-id' })
     expect(rpc).toHaveBeenCalledWith('cancel_contact_book_assignment', {
+      p_assignment_id: 'assignment-id',
+    })
+  })
+
+  it('由受保護的資料庫操作恢復作業', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { assignmentId: 'assignment-id' }, error: null })
+    requireSupabase.mockReturnValue({ rpc })
+    await restoreAssignment({ assignmentId: 'assignment-id' })
+    expect(rpc).toHaveBeenCalledWith('restore_contact_book_assignment', {
       p_assignment_id: 'assignment-id',
     })
   })
