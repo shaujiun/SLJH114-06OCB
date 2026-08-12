@@ -2681,6 +2681,75 @@ footer {
   border-color: #c86d76;
 }
 
+.cancelled-assignment-panel {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1.5px dashed #b9aea2;
+}
+
+.cancelled-assignment-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  color: #645b73;
+  background: #f3eef8;
+  border: 1.5px solid #9d8db5;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.cancelled-assignment-toggle svg {
+  width: 18px;
+}
+
+.cancelled-assignment-toggle span {
+  flex: 1;
+  text-align: left;
+}
+
+.cancelled-assignment-toggle strong {
+  padding: 3px 8px;
+  color: #4f4563;
+  background: white;
+  border-radius: 999px;
+}
+
+.cancelled-assignment-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.cancelled-assignment-list article {
+  padding: 12px 14px;
+  background: #faf8fc;
+  border: 1.5px solid #d4cadd;
+  border-radius: 14px;
+}
+
+.cancelled-assignment-list .assignment-item-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.assignment-audience.is-cancelled {
+  color: #746b7e;
+  background: #e9e4ed;
+  border-color: #958a9f;
+}
+
+.assignment-submission-actions button.assignment-restore-button {
+  color: #17604d;
+  background: #dcf6ed;
+  border-color: #68a794;
+}
+
 .assignment-submission-actions svg {
   width: 14px;
 }
@@ -5035,6 +5104,12 @@ footer {
   }
 
   .assignment-items .assignment-item-summary {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .cancelled-assignment-list .assignment-item-summary {
     grid-template-columns: 1fr;
     align-items: start;
     gap: 8px;

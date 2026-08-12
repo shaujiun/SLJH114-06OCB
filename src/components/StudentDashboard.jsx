@@ -211,7 +211,10 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
   )
   const periodSummaries = useMemo(
     () => buildPeriodExceptionSummaries({
-      assignments: dashboard?.assignments || [],
+      assignments: [
+        ...(dashboard?.assignments || []),
+        ...(dashboard?.cancelledLateAssignmentHistory || []),
+      ],
       exceptions: dashboard?.exceptions || [],
       terms: dashboard?.terms || [],
       selectedTermId: termId,

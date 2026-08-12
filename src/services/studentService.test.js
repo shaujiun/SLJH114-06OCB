@@ -104,6 +104,19 @@ describe('學生聯絡簿資料', () => {
     expect(summary.notBroughtCount).toBe(1)
   })
 
+  it('已取消作業的既有遲交仍納入期間統計', () => {
+    const summaries = buildPeriodExceptionSummaries({
+      assignments: [{ id: 'cancelled-assignment', dueAt: '2026-08-12T08:00:00+08:00' }],
+      exceptions: [{ assignmentId: 'cancelled-assignment', workflowState: 'made_up', countsAsLate: true }],
+      terms: [{ id: 'term-id', semester: 1, starts_on: '2026-08-10', ends_on: '2026-11-15' }],
+      selectedTermId: 'term-id',
+      today: '2026-08-12',
+    })
+
+    expect(summaries.find((summary) => summary.key === 'week').lateCount).toBe(1)
+    expect(summaries.find((summary) => summary.key === 'term').lateCount).toBe(1)
+  })
+
   it('依作業繳交期限同時產生四種期間統計', () => {
     const assignments = [
       { id: 'week-item', dueAt: '2026-08-12T08:00:00+08:00' },

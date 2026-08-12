@@ -214,6 +214,7 @@ export async function loadStudentDashboard() {
     assignmentsResult,
     recipientsResult,
     exceptionsResult,
+    cancelledLateHistoryResult,
     helpersResult,
     classSubjectsResult,
     announcements,
@@ -244,6 +245,7 @@ export async function loadStudentDashboard() {
       .select('id,assignment_id,initial_reason,current_reason,workflow_state,follow_up_due_at,counts_as_missing,counts_as_late,resolved_at,hide_after,created_at')
       .eq('student_id', student.id)
       .order('created_at', { ascending: false }),
+    client.rpc('get_my_cancelled_late_assignment_history'),
     client
       .from('student_helper_assignments')
       .select('academic_term_id,class_subject_id,helper_role,target_group_code,starts_on,ends_on')
@@ -305,6 +307,14 @@ export async function loadStudentDashboard() {
     hideAfter: row.hide_after,
     createdAt: row.created_at,
   }))
+  const cancelledLateAssignmentHistory = requireData(
+    cancelledLateHistoryResult.data,
+    cancelledLateHistoryResult.error,
+    '無法讀取已取消作業的遲交紀錄。',
+  ).map((row) => ({
+    id: row.assignment_id,
+    dueAt: row.due_at,
+  }))
   const helperAssignments = requireData(
     helpersResult.data,
     helpersResult.error,
@@ -348,6 +358,7 @@ export async function loadStudentDashboard() {
     terms,
     groups,
     assignments,
+    cancelledLateAssignmentHistory,
     exceptions,
     helperAssignments,
     classSubjects,

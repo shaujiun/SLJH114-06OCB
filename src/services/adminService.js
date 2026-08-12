@@ -333,14 +333,14 @@ export async function createStudentPasswordReset({ studentId, studentIdCode }) {
   return data
 }
 
-export async function loadAssignments({ academicTermId, classSubjectIds }) {
+export async function loadAssignments({ academicTermId, classSubjectIds, isActive = true }) {
   if (Array.isArray(classSubjectIds) && !classSubjectIds.length) return []
   const client = requireSupabase()
   let assignmentQuery = client
     .from('assignments')
-    .select('id,class_subject_id,assignment_date,content,due_at,target_type,target_group_code,published_by_display_name,published_at,is_active,class_subjects!inner(subjects!inner(code,name))')
+    .select('id,class_subject_id,assignment_date,content,due_at,target_type,target_group_code,published_by_display_name,published_at,is_active,cancelled_at,class_subjects!inner(subjects!inner(code,name))')
     .eq('academic_term_id', academicTermId)
-    .eq('is_active', true)
+    .eq('is_active', isActive)
     .order('due_at', { ascending: false })
   if (classSubjectIds?.length) assignmentQuery = assignmentQuery.in('class_subject_id', classSubjectIds)
   const [assignmentsResult, recipientsResult] = await Promise.all([
@@ -369,6 +369,8 @@ export async function loadAssignments({ academicTermId, classSubjectIds }) {
       targetGroupCode: row.target_group_code,
       publisher: row.published_by_display_name,
       publishedAt: row.published_at,
+      isActive: row.is_active,
+      cancelledAt: row.cancelled_at,
       subject,
       recipientCount: counts.get(row.id) || 0,
       pendingRecipientCount: pendingCounts.get(row.id) || 0,
@@ -465,6 +467,27 @@ export async function cancelAssignment({ assignmentId }) {
       throw new Error('目前帳號沒有取消這份作業的權限。')
     }
     throw new Error('作業取消失敗，請稍後再試。')
+  }
+  return data
+}
+
+export async function restoreAssignment({ assignmentId }) {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('restore_contact_book_assignment', {
+    p_assignment_id: assignmentId,
+  })
+  if (error) {
+    const databaseMessage = error.message || ''
+    if (databaseMessage.includes('assignment_already_active')) {
+      throw new Error('這項作業已經恢復，請重新整理。')
+    }
+    if (databaseMessage.includes('invalid_assignment')) {
+      throw new Error('找不到這項已取消作業，請重新整理。')
+    }
+    if (databaseMessage.includes('restore_permission_required')) {
+      throw new Error('目前帳號沒有恢復這項作業的權限。')
+    }
+    throw new Error('作業恢復失敗，請稍後再試。')
   }
   return data
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Ban, BookOpenCheck, CalendarClock, CheckCheck, MonitorUp, Plus, RefreshCw, Send, UserRoundCheck } from 'lucide-react'
+import { Ban, BookOpenCheck, CalendarClock, CheckCheck, MonitorUp, Plus, RefreshCw, RotateCcw, Send, UserRoundCheck } from 'lucide-react'
 import {
   cancelAssignment,
   filterAssignmentsByDate,
@@ -7,6 +7,7 @@ import {
   loadAssignments,
   publishAssignment,
   recordSubmissionCheck,
+  restoreAssignment,
   sortAssignmentsByTarget,
 } from '../services/adminService.js'
 import { loadDailyQuizReminderSettings } from '../services/quizReminderService.js'
@@ -76,10 +77,13 @@ export default function AssignmentManagement({
     content: '', ...firstTarget(firstSubject),
   })
   const [assignments, setAssignments] = useState([])
+  const [cancelledAssignments, setCancelledAssignments] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [submissionSavingId, setSubmissionSavingId] = useState('')
   const [cancellingId, setCancellingId] = useState('')
+  const [restoringId, setRestoringId] = useState('')
+  const [showCancelledAssignments, setShowCancelledAssignments] = useState(false)
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
@@ -112,19 +116,26 @@ export default function AssignmentManagement({
     if (!termId) return
     setLoading(true)
     try {
-      const rows = await loadAssignments({
+      const query = {
         academicTermId: termId,
         classSubjectIds: dashboard.classSubjects.map((subject) => subject.id),
-      })
+      }
+      const [rows, cancelledRows] = await Promise.all([
+        loadAssignments(query),
+        isHelperMode ? Promise.resolve([]) : loadAssignments({ ...query, isActive: false }),
+      ])
       setAssignments(sortAssignmentsByTarget(rows.filter((assignment) => {
         const subject = dashboard.classSubjects.find((item) => item.id === assignment.classSubjectId)
         const target = assignment.targetType === 'common' ? 'common' : assignment.targetGroupCode
         return allowedTargets(subject).includes(target)
       })))
+      setCancelledAssignments(cancelledRows.sort((left, right) => (
+        new Date(right.cancelledAt || 0).getTime() - new Date(left.cancelledAt || 0).getTime()
+      )))
     }
     catch (error) { setNotice({ type: 'error', message: error.message }) }
     finally { setLoading(false) }
-  }, [termId])
+  }, [dashboard.classSubjects, isHelperMode, termId])
 
   useEffect(() => { load() }, [load])
 
@@ -204,6 +215,22 @@ export default function AssignmentManagement({
     }
   }
 
+  async function restoreCancelledAssignment(assignment) {
+    const label = `${assignment.subject?.name}・${assignment.content}`
+    if (!window.confirm(`確定要恢復「${label}」嗎？學生端會重新顯示這項作業；取消前已成立的遲交紀錄會繼續保留。`)) return
+    setRestoringId(assignment.id)
+    setNotice(null)
+    try {
+      await restoreAssignment({ assignmentId: assignment.id })
+      await load()
+      setNotice({ type: 'success', message: `作業「${label}」已恢復。` })
+    } catch (error) {
+      setNotice({ type: 'error', message: error.message })
+    } finally {
+      setRestoringId('')
+    }
+  }
+
   async function openAssignmentBoard() {
     setShowAssignmentBoard(true)
     setBoardQuizReminders([])
@@ -265,6 +292,23 @@ export default function AssignmentManagement({
             <div className="assignment-submission-actions"><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => setTrackingAssignmentId((current) => current === item.id ? '' : item.id)}><UserRoundCheck />登記例外學生</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
             {trackingAssignmentId === item.id && <SubmissionTrackingPanel assignment={item} stage={submissionStage} onClose={() => setTrackingAssignmentId('')} onNotice={(type, message) => setNotice({ type, message })} onSaved={load} />}
           </article>)}</div>
+          {!isHelperMode && <section className="cancelled-assignment-panel">
+            <button className="cancelled-assignment-toggle" type="button" onClick={() => setShowCancelledAssignments((current) => !current)} aria-expanded={showCancelledAssignments}>
+              <RotateCcw aria-hidden="true" />
+              <span>{showCancelledAssignments ? '收合已取消作業' : '查看已取消作業'}</span>
+              <strong>{cancelledAssignments.length} 筆</strong>
+            </button>
+            {showCancelledAssignments && <div className="cancelled-assignment-list">
+              {!cancelledAssignments.length && <div className="student-list-empty"><CheckCheck /><strong>目前沒有已取消作業</strong></div>}
+              {cancelledAssignments.map((item) => <article key={item.id}>
+                <div className="assignment-item-summary">
+                  <div className="assignment-item-copy"><span className="assignment-audience is-cancelled">已取消</span><strong>{item.subject?.name}・{item.content}</strong></div>
+                  <div className="assignment-item-meta"><span><CalendarClock />期限：{formatCompactDateTime(item.dueAt)}</span><small>原發布者：{item.publisher}・{item.recipientCount} 人</small></div>
+                </div>
+                <div className="assignment-submission-actions"><button className="assignment-restore-button" type="button" disabled={restoringId === item.id} onClick={() => restoreCancelledAssignment(item)}><RotateCcw />{restoringId === item.id ? '恢復中…' : '恢復作業'}</button></div>
+              </article>)}
+            </div>}
+          </section>}
         </section>
       </div>
       {showAssignmentBoard && <AssignmentBoard
