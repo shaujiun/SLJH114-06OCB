@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ban, BookOpenCheck, CalendarClock, CheckCheck, MonitorUp, Plus, RefreshCw, Send, UserRoundCheck } from 'lucide-react'
-import { cancelAssignment, loadAssignments, publishAssignment, recordSubmissionCheck, sortAssignmentsByTarget } from '../services/adminService.js'
+import {
+  cancelAssignment,
+  filterAssignmentsByDate,
+  getOutstandingAssignmentDates,
+  loadAssignments,
+  publishAssignment,
+  recordSubmissionCheck,
+  sortAssignmentsByTarget,
+} from '../services/adminService.js'
 import { loadDailyQuizReminderSettings } from '../services/quizReminderService.js'
 import AssignmentBoard from './AssignmentBoard.jsx'
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
@@ -25,6 +33,17 @@ function formatCompactDateTime(value) {
   return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
+function formatAssignmentDate(value) {
+  if (!value) return '未選擇日期'
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('zh-TW', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(date)
+}
+
 function allowedTargets(subject) {
   if (subject?.allowedTargetGroups?.length) return subject.allowedTargetGroups
   return ['math', 'english'].includes(subject?.code) ? ['common', 'A', 'B'] : ['common']
@@ -43,15 +62,17 @@ export default function AssignmentManagement({
   hideTermPicker = false,
   allowQuizReminders = false,
   allowAssignmentBoard = false,
+  filterByOutstandingDate = false,
 }) {
   const isHelperMode = submissionStage === 'helper'
   const firstTerm = dashboard.terms[0]
   const firstSubject = dashboard.classSubjects[0]
+  const today = localDateString()
   const [termId, setTermId] = useState(firstTerm?.id || '')
   const [form, setForm] = useState({
     classSubjectId: firstSubject?.id || '',
-    assignmentDate: firstTerm?.starts_on || '',
-    dueAt: nextDay(firstTerm?.starts_on || new Date().toISOString().slice(0, 10)),
+    assignmentDate: today,
+    dueAt: nextDay(today),
     content: '', ...firstTarget(firstSubject),
   })
   const [assignments, setAssignments] = useState([])
@@ -60,6 +81,7 @@ export default function AssignmentManagement({
   const [submissionSavingId, setSubmissionSavingId] = useState('')
   const [cancellingId, setCancellingId] = useState('')
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
+  const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
   const [boardQuizReminders, setBoardQuizReminders] = useState([])
   const [boardQuizReminderLoading, setBoardQuizReminderLoading] = useState(false)
@@ -75,6 +97,16 @@ export default function AssignmentManagement({
     [dashboard.terms, termId],
   )
   const selectedAllowedTargets = allowedTargets(selectedSubject)
+  const outstandingAssignmentDates = useMemo(
+    () => getOutstandingAssignmentDates(assignments),
+    [assignments],
+  )
+  const visibleAssignments = useMemo(
+    () => filterByOutstandingDate
+      ? filterAssignmentsByDate(assignments, selectedAssignmentDate)
+      : assignments,
+    [assignments, filterByOutstandingDate, selectedAssignmentDate],
+  )
 
   const load = useCallback(async () => {
     if (!termId) return
@@ -95,6 +127,13 @@ export default function AssignmentManagement({
   }, [termId])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!filterByOutstandingDate) return
+    setSelectedAssignmentDate((current) => (
+      outstandingAssignmentDates.includes(current) ? current : outstandingAssignmentDates[0] || ''
+    ))
+  }, [filterByOutstandingDate, outstandingAssignmentDates])
 
   function changeTerm(nextTermId) {
     setTermId(nextTermId)
@@ -136,6 +175,7 @@ export default function AssignmentManagement({
     setNotice(null)
     try {
       await recordSubmissionCheck({ assignmentId: assignment.id, stage: submissionStage, exceptions: [] })
+      await load()
       setNotice({
         type: 'success',
         message: isHelperMode ? '第一階段已登記全班繳交完成。' : '已登記全班繳交完成。',
@@ -212,16 +252,18 @@ export default function AssignmentManagement({
           <button className="approve-button" type="submit" disabled={saving}><Send aria-hidden="true" />{saving ? '發布中…' : '發布作業'}</button>
         </form>
         <section className="assignment-list-panel">
-          <div className="student-list-heading"><div><span><BookOpenCheck aria-hidden="true" /></span><div><h3>已發布作業</h3><p>共 {assignments.length} 筆</p></div></div><button type="button" onClick={load}><RefreshCw aria-hidden="true" /></button></div>
+          <div className="student-list-heading"><div><span><BookOpenCheck aria-hidden="true" /></span><div><h3>已發布作業</h3><p>{filterByOutstandingDate ? selectedAssignmentDate ? `${formatAssignmentDate(selectedAssignmentDate)}・共 ${visibleAssignments.length} 筆` : '目前沒有待處理日期' : `共 ${assignments.length} 筆`}</p></div></div><button type="button" onClick={load}><RefreshCw aria-hidden="true" /></button></div>
           {loading && <div className="student-list-empty"><RefreshCw className="is-spinning" />讀取中…</div>}
           {!loading && !assignments.length && <div className="student-list-empty"><BookOpenCheck /><strong>尚未發布作業</strong><span>建立後會依共同或分組顯示。</span></div>}
-          <div className="assignment-items">{assignments.map((item) => <article key={item.id}>
+          {!loading && filterByOutstandingDate && Boolean(assignments.length) && Boolean(outstandingAssignmentDates.length) && <label className="assignment-date-picker"><span>選擇發布日期</span><select value={selectedAssignmentDate} onChange={(event) => { setSelectedAssignmentDate(event.target.value); setTrackingAssignmentId('') }}>{outstandingAssignmentDates.map((date) => <option value={date} key={date}>{formatAssignmentDate(date)}</option>)}</select><small>只保留仍有學生未繳交的發布日期</small></label>}
+          {!loading && filterByOutstandingDate && Boolean(assignments.length) && !outstandingAssignmentDates.length && <div className="student-list-empty"><CheckCheck /><strong>目前所有作業皆已繳交</strong><span>有未繳交作業的日期才會出現在選單。</span></div>}
+          <div className="assignment-items">{visibleAssignments.map((item) => <article key={item.id}>
             <div className="assignment-item-summary">
               <div className="assignment-item-copy"><span className={`assignment-audience is-${item.targetType === 'common' ? 'common' : item.targetGroupCode.toLowerCase()}`}>{item.targetType === 'common' ? '共同' : `${item.targetGroupCode} 組`}</span><strong>{item.subject?.name}・{item.content}</strong></div>
               <div className="assignment-item-meta"><span><CalendarClock />期限：{formatCompactDateTime(item.dueAt)}</span><small>發布者：{item.publisher}・{item.recipientCount} 人</small></div>
             </div>
             <div className="assignment-submission-actions"><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => setTrackingAssignmentId((current) => current === item.id ? '' : item.id)}><UserRoundCheck />登記例外學生</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
-            {trackingAssignmentId === item.id && <SubmissionTrackingPanel assignment={item} stage={submissionStage} onClose={() => setTrackingAssignmentId('')} onNotice={(type, message) => setNotice({ type, message })} />}
+            {trackingAssignmentId === item.id && <SubmissionTrackingPanel assignment={item} stage={submissionStage} onClose={() => setTrackingAssignmentId('')} onNotice={(type, message) => setNotice({ type, message })} onSaved={load} />}
           </article>)}</div>
         </section>
       </div>

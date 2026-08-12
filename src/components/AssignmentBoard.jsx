@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { BookOpenCheck, ClipboardPenLine, RefreshCw, X } from 'lucide-react'
-import { buildAssignmentBoardGroups } from '../lib/assignmentBoard.js'
+import { buildAssignmentBoardGroups, filterCurrentAssignmentBoardItems } from '../lib/assignmentBoard.js'
 import {
   buildQuizReminderBoardGroups,
   quizReminderBoardDisplayText,
@@ -78,7 +78,10 @@ export default function AssignmentBoard({
   quizReminderError = '',
   onClose,
 }) {
-  const groups = useMemo(() => buildAssignmentBoardGroups(assignments), [assignments])
+  const groups = useMemo(
+    () => buildAssignmentBoardGroups(filterCurrentAssignmentBoardItems(assignments)),
+    [assignments],
+  )
   const reminderGroups = useMemo(
     () => buildQuizReminderBoardGroups(quizReminders),
     [quizReminders],

@@ -347,11 +347,15 @@ export async function loadAssignments({ academicTermId, classSubjectIds }) {
     assignmentQuery,
     client
       .from('assignment_recipients')
-      .select('assignment_id'),
+      .select('assignment_id,submitted_at'),
   ])
   const rows = requireData(assignmentsResult.data, assignmentsResult.error, '無法讀取作業清單。')
   const recipients = requireData(recipientsResult.data, recipientsResult.error, '無法讀取作業對象。')
   const counts = recipients.reduce((map, row) => map.set(row.assignment_id, (map.get(row.assignment_id) || 0) + 1), new Map())
+  const pendingCounts = recipients.reduce((map, row) => {
+    if (!row.submitted_at) map.set(row.assignment_id, (map.get(row.assignment_id) || 0) + 1)
+    return map
+  }, new Map())
   return rows.map((row) => {
     const classSubject = relation(row.class_subjects)
     const subject = relation(classSubject?.subjects)
@@ -364,10 +368,35 @@ export async function loadAssignments({ academicTermId, classSubjectIds }) {
       targetType: row.target_type,
       targetGroupCode: row.target_group_code,
       publisher: row.published_by_display_name,
+      publishedAt: row.published_at,
       subject,
       recipientCount: counts.get(row.id) || 0,
+      pendingRecipientCount: pendingCounts.get(row.id) || 0,
+      isFullySubmitted: (counts.get(row.id) || 0) > 0 && !pendingCounts.get(row.id),
     }
   })
+}
+
+export function getAssignmentPublishedDate(assignment) {
+  if (!assignment?.publishedAt) return assignment?.assignmentDate || ''
+  const date = new Date(assignment.publishedAt)
+  if (Number.isNaN(date.getTime())) return assignment.assignmentDate || ''
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
+}
+
+export function getOutstandingAssignmentDates(assignments) {
+  const dates = new Set(
+    (assignments || [])
+      .filter((assignment) => !assignment.isFullySubmitted && getAssignmentPublishedDate(assignment))
+      .map(getAssignmentPublishedDate),
+  )
+  return [...dates].sort((left, right) => right.localeCompare(left))
+}
+
+export function filterAssignmentsByDate(assignments, assignmentDate) {
+  if (!assignmentDate) return []
+  return (assignments || []).filter((assignment) => getAssignmentPublishedDate(assignment) === assignmentDate)
 }
 
 export function sortAssignmentsByTarget(assignments) {

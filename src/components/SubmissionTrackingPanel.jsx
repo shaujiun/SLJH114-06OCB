@@ -45,7 +45,7 @@ function defaultFollowUp(dueAt) {
   return toLocalInput(date)
 }
 
-export default function SubmissionTrackingPanel({ assignment, stage = 'teacher', onClose, onNotice }) {
+export default function SubmissionTrackingPanel({ assignment, stage = 'teacher', onClose, onNotice, onSaved }) {
   const isHelperStage = stage === 'helper'
   const [tracking, setTracking] = useState(null)
   const [forms, setForms] = useState({})
@@ -115,6 +115,7 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
           ? `${isHelperStage ? '第一階段已保存，' : '已保存，'}尚有 ${result.openExceptionCount} 位學生待處理。`
           : isHelperStage ? '第一階段已登記全班繳交完成。' : '已登記全班繳交完成。',
       )
+      await onSaved?.(result)
     } catch (error) {
       onNotice('error', error.message)
     } finally {

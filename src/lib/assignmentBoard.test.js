@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAssignmentBoardGroups } from './assignmentBoard.js'
+import { buildAssignmentBoardGroups, filterCurrentAssignmentBoardItems } from './assignmentBoard.js'
 
 describe('作業長全畫面作業看板', () => {
   const common = { id: 'common', targetType: 'common' }
@@ -22,5 +22,18 @@ describe('作業長全畫面作業看板', () => {
 
   it('資料未載入時安全回傳空看板', () => {
     expect(buildAssignmentBoardGroups()).toEqual({ A: [], B: [] })
+  })
+  it('全螢幕只保留今天以前發布、未到期且尚未全班繳交的作業', () => {
+    const now = new Date('2026-08-12T10:00:00+08:00')
+    const assignments = [
+      { id: 'today-open', assignmentDate: '2026-08-13', publishedAt: '2026-08-12T09:00:00+08:00', dueAt: '2026-08-12T17:00:00+08:00', isFullySubmitted: false },
+      { id: 'older-open', assignmentDate: '2026-08-13', publishedAt: '2026-08-10T09:00:00+08:00', dueAt: '2026-08-13T08:00:00+08:00', isFullySubmitted: false },
+      { id: 'expired', assignmentDate: '2026-08-13', publishedAt: '2026-08-10T09:00:00+08:00', dueAt: '2026-08-12T09:59:59+08:00', isFullySubmitted: false },
+      { id: 'fully-submitted', assignmentDate: '2026-08-13', publishedAt: '2026-08-11T09:00:00+08:00', dueAt: '2026-08-13T08:00:00+08:00', isFullySubmitted: true },
+      { id: 'future', assignmentDate: '2026-08-13', publishedAt: '2026-08-13T09:00:00+08:00', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false },
+    ]
+
+    expect(filterCurrentAssignmentBoardItems(assignments, now).map((item) => item.id))
+      .toEqual(['today-open', 'older-open'])
   })
 })

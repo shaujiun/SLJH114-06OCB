@@ -2528,6 +2528,39 @@ footer {
   margin-top: 17px;
 }
 
+.assignment-date-picker {
+  display: grid;
+  grid-template-columns: auto minmax(170px, 1fr);
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 17px;
+  padding: 13px 14px;
+  background: #f1ecff;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+}
+
+.assignment-date-picker > span {
+  font-weight: 900;
+}
+
+.assignment-date-picker select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 11px;
+  color: var(--ink);
+  background: white;
+  border: 1.5px solid #cfc8bc;
+  border-radius: 10px;
+  font-weight: 900;
+}
+
+.assignment-date-picker small {
+  grid-column: 2;
+  color: #6f6783;
+  font-weight: 800;
+}
+
 .assignment-items article {
   padding: 12px 14px;
   background: white;
@@ -5005,6 +5038,14 @@ footer {
     grid-template-columns: 1fr;
     align-items: start;
     gap: 8px;
+  }
+
+  .assignment-date-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-date-picker small {
+    grid-column: 1;
   }
 
   .assignment-item-meta {
