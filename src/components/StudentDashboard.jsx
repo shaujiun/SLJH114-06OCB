@@ -43,6 +43,7 @@ const reasonLabels = {
   incomplete: '未完成',
   not_brought: '未攜帶',
   late: '遲交',
+  retest_required: '需補考',
   leave: '請假待補',
   official_leave: '公假待補',
   exempt: '免繳',
@@ -112,7 +113,9 @@ function AssignmentGroupCard({ group, exceptionsByAssignment }) {
               <span className={`student-assignment-deadline${overdue ? ' is-overdue' : ''}`}>期限：{formatMonthDay(assignment.dueAt)}</span>
               {exception && (
                 <span className={`student-status is-${exception.workflowState}`}>
-                  {exception.workflowState === 'made_up' ? '已補交' : reasonLabels[exception.currentReason]}
+                  {exception.workflowState === 'made_up'
+                    ? exception.currentReason === 'retest_required' ? '已補考' : '已補交'
+                    : reasonLabels[exception.currentReason]}
                 </span>
               )}
             </div>
@@ -390,7 +393,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
             {!visibleExceptions.length && <div className="student-home-empty is-small"><CheckCircle2 /><strong>目前沒有待處理項目</strong></div>}
             <div className="student-exception-list">{visibleExceptions.map((item) => {
               const assignment = dashboard.assignments.find((row) => row.id === item.assignmentId)
-              return <article key={item.id}><div><span className={`student-reason is-${item.currentReason}`}>{item.workflowState === 'made_up' ? '已補交' : reasonLabels[item.currentReason]}</span><strong>{assignment ? `${assignment.subject.name}・${assignment.content}` : '過往作業'}</strong></div>{item.followUpDueAt && <p>補交期限：{formatDateTime(item.followUpDueAt)}</p>}</article>
+              return <article key={item.id}><div><span className={`student-reason is-${item.currentReason}`}>{item.workflowState === 'made_up' ? item.currentReason === 'retest_required' ? '已補考' : '已補交' : reasonLabels[item.currentReason]}</span><strong>{assignment ? `${assignment.subject.name}・${assignment.content}` : '過往作業'}</strong></div>{item.followUpDueAt && <p>補交期限：{formatDateTime(item.followUpDueAt)}</p>}</article>
             })}</div>
           </section>
         </div>
