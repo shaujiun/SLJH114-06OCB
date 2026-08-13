@@ -104,6 +104,22 @@ describe('學生聯絡簿資料', () => {
     expect(summary.notBroughtCount).toBe(1)
   })
 
+  it('需補考列為待處理但不增加其他累積次數', () => {
+    const summary = buildExceptionSummary([{
+      initialReason: 'retest_required',
+      currentReason: 'retest_required',
+      workflowState: 'open',
+      countsAsMissing: false,
+      countsAsLate: false,
+    }])
+
+    expect(summary.openCount).toBe(1)
+    expect(summary.incompleteCount).toBe(0)
+    expect(summary.notBroughtCount).toBe(0)
+    expect(summary.lateCount).toBe(0)
+    expect(summary.visible).toHaveLength(1)
+  })
+
   it('已取消作業的既有遲交仍納入期間統計', () => {
     const summaries = buildPeriodExceptionSummaries({
       assignments: [{ id: 'cancelled-assignment', dueAt: '2026-08-12T08:00:00+08:00' }],

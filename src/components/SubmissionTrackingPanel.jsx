@@ -10,6 +10,7 @@ const reasonOptions = [
   ['incomplete', '未完成'],
   ['not_brought', '未攜帶'],
   ['late', '遲交'],
+  ['retest_required', '需補考'],
   ['leave', '請假待補'],
   ['official_leave', '公假待補'],
   ['exempt', '免繳'],
@@ -25,7 +26,9 @@ function formatDateTime(value) {
 
 function eventDescription(event) {
   if (!event.fromReason) return `建立為「${reasonLabels.get(event.toReason) || event.toReason}」`
-  if (event.toState === 'made_up') return '改為「已補交」'
+  if (event.toState === 'made_up') return event.fromReason === 'retest_required' || event.toReason === 'retest_required'
+    ? '改為「已補考」'
+    : '改為「已補交」'
   if (event.toState === 'waived') return '改為「免繳結案」'
   const fromLabel = reasonLabels.get(event.fromReason) || event.fromReason
   const toLabel = reasonLabels.get(event.toReason) || event.toReason
@@ -160,7 +163,7 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
                     {overdue && <div className="submission-overdue-alert"><AlertTriangle aria-hidden="true" /><span><strong>追繳期限已到</strong>{isHelperStage ? '請通知任課老師或導師處理。' : '請改為未完成、未攜帶、遲交，或修正追繳期限。'}</span></div>}
                   </>
                 ) : (
-                  <span className="submission-complete-status"><CheckCircle2 />{student.exception ? '已補交／本次已繳' : '已繳交'}</span>
+                  <span className="submission-complete-status"><CheckCircle2 />{student.exception?.reason === 'retest_required' ? '已補考／本次已繳' : student.exception ? '已補交／本次已繳' : '已繳交'}</span>
                 )}
                 {student.exception && (
                   <details className="submission-status-history">

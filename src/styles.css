@@ -1298,6 +1298,11 @@ footer {
   background: #dff7ef;
 }
 
+.student-reason.is-retest_required {
+  color: #71530b;
+  background: #fff1bf;
+}
+
 .student-exception-list article {
   padding: 13px;
   background: #fffaf0;

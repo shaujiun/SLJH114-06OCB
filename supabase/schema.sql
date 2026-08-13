@@ -244,9 +244,9 @@ create table if not exists public.submission_exceptions (
   assignment_id uuid not null references public.assignments(id) on delete cascade,
   student_id uuid not null references public.students(id) on delete cascade,
   initial_reason text not null
-    check (initial_reason in ('incomplete', 'not_brought', 'late', 'leave', 'official_leave', 'exempt')),
+    check (initial_reason in ('incomplete', 'not_brought', 'late', 'retest_required', 'leave', 'official_leave', 'exempt')),
   current_reason text not null
-    check (current_reason in ('incomplete', 'not_brought', 'late', 'leave', 'official_leave', 'exempt')),
+    check (current_reason in ('incomplete', 'not_brought', 'late', 'retest_required', 'leave', 'official_leave', 'exempt')),
   workflow_state text not null default 'open'
     check (workflow_state in ('open', 'made_up', 'waived')),
   follow_up_due_at timestamptz,
@@ -1063,7 +1063,7 @@ begin
       select 1
       from jsonb_to_recordset(coalesce(p_exceptions, '[]'::jsonb))
         as x(student_id uuid, reason text, follow_up_due_at timestamptz)
-      where x.reason not in ('incomplete', 'not_brought', 'late', 'leave', 'official_leave', 'exempt')
+      where x.reason not in ('incomplete', 'not_brought', 'late', 'retest_required', 'leave', 'official_leave', 'exempt')
         or (x.reason in ('leave', 'official_leave') and x.follow_up_due_at is null)
         or not exists (
           select 1 from public.assignment_recipients ar
@@ -1086,10 +1086,12 @@ begin
   if p_stage = 'teacher' then
     update public.submission_exceptions se
     set workflow_state = 'made_up',
-        counts_as_late = se.counts_as_late or not (
+        counts_as_late = se.counts_as_late or (
+          se.current_reason <> 'retest_required' and not (
           se.current_reason in ('leave', 'official_leave')
           and se.follow_up_due_at is not null
           and now() <= se.follow_up_due_at
+          )
         ),
         last_updated_by = auth.uid()
     where se.assignment_id = p_assignment_id

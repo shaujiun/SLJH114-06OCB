@@ -231,6 +231,28 @@ describe('作業發布服務', () => {
       p_assignment_id: 'assignment-id',
     })
   })
+
+  it('需補考會以不含補交期限的例外原因送出', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { openExceptionCount: 1 }, error: null })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await recordSubmissionCheck({
+      assignmentId: 'assignment-id',
+      stage: 'teacher',
+      exceptions: [{ studentId: 'student-id', reason: 'retest_required', followUpDueAt: '' }],
+    })
+
+    expect(rpc).toHaveBeenCalledWith('record_assignment_submission_check_v2', {
+      p_assignment_id: 'assignment-id',
+      p_stage: 'teacher',
+      p_result: 'exceptions_recorded',
+      p_exceptions: [{
+        student_id: 'student-id',
+        reason: 'retest_required',
+        follow_up_due_at: null,
+      }],
+    })
+  })
 })
 
 describe('作業繳交確認服務', () => {
