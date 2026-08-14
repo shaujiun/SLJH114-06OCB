@@ -140,6 +140,27 @@ export async function loadCalendarEvents({ classId, month, includeInactive = fal
   return (data || []).map(mapCalendarEventRow)
 }
 
+export async function loadRecentCalendarHolidays({ classId, beforeDate }) {
+  const end = new Date(`${beforeDate}T12:00:00`)
+  if (Number.isNaN(end.getTime())) throw new Error('無法判斷前一次上課日。')
+  const start = new Date(end.getTime())
+  start.setDate(start.getDate() - 370)
+
+  const client = requireSupabase()
+  const { data, error } = await client
+    .from('calendar_events')
+    .select('id,class_id,title,description,location,category,starts_on,ends_on,is_all_day,start_time,end_time,is_active,source_office,source_audience,source_file_name,source_sheet,source_row,created_at,updated_at')
+    .eq('class_id', classId)
+    .eq('category', 'holiday')
+    .eq('is_active', true)
+    .lte('starts_on', beforeDate)
+    .gte('ends_on', localDateKey(start))
+    .order('starts_on')
+
+  if (error) throw new Error('無法讀取放假日期，請重新整理後再試。')
+  return (data || []).map(mapCalendarEventRow)
+}
+
 export async function saveCalendarEvent({ eventId = null, classId, ...input }) {
   const validated = validateCalendarEventInput(input)
   const client = requireSupabase()

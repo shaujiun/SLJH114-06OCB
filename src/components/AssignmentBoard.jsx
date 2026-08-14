@@ -69,7 +69,7 @@ function AssignmentGroupColumn({
                 <span>{assignment.subject?.name || '未設定科目'}</span>
                 <div className="assignment-board-item-copy">
                   <strong>{assignment.content}</strong>
-                  {showOutstandingSeats && <small>待完成：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
+                  {showOutstandingSeats && assignment.outstandingSeatNumbers?.length > 0 && <small>例外名單：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
                 </div>
               </li>
             ))}
@@ -100,7 +100,6 @@ export default function AssignmentBoard({
     () => {
       const filtered = mode === 'previous-day'
         ? filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
-          .filter((assignment) => assignment.outstandingSeatNumbers?.length)
         : filterCurrentAssignmentBoardItems(assignments)
       return buildAssignmentBoardGroups(filtered)
     },
