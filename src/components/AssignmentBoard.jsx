@@ -1,7 +1,11 @@
 import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { BookOpenCheck, ClipboardPenLine, RefreshCw, X } from 'lucide-react'
-import { buildAssignmentBoardGroups, filterCurrentAssignmentBoardItems } from '../lib/assignmentBoard.js'
+import {
+  buildAssignmentBoardGroups,
+  filterCurrentAssignmentBoardItems,
+  filterPreviousDayAssignmentBoardItems,
+} from '../lib/assignmentBoard.js'
 import {
   buildQuizReminderBoardGroups,
   quizReminderBoardDisplayText,
@@ -35,6 +39,9 @@ function AssignmentGroupColumn({
   quizReminders,
   quizReminderLoading,
   quizReminderError,
+  showOutstandingSeats,
+  loading,
+  error,
 }) {
   return (
     <section className={`assignment-board-column is-${groupCode.toLowerCase()}`}>
@@ -51,12 +58,19 @@ function AssignmentGroupColumn({
           error={quizReminderError}
         />
 
-        {assignments.length > 0 ? (
+        {loading ? (
+          <div className="assignment-board-empty"><RefreshCw className="is-spinning" aria-hidden="true" /><strong>讀取待完成座號…</strong></div>
+        ) : error ? (
+          <div className="assignment-board-empty is-error"><strong>{error}</strong></div>
+        ) : assignments.length > 0 ? (
           <ol className="assignment-board-list">
             {assignments.map((assignment) => (
               <li key={assignment.id}>
                 <span>{assignment.subject?.name || '未設定科目'}</span>
-                <strong>{assignment.content}</strong>
+                <div className="assignment-board-item-copy">
+                  <strong>{assignment.content}</strong>
+                  {showOutstandingSeats && <small>待完成：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
+                </div>
               </li>
             ))}
           </ol>
@@ -76,16 +90,31 @@ export default function AssignmentBoard({
   quizReminders = [],
   quizReminderLoading = false,
   quizReminderError = '',
+  mode = 'current',
+  referenceDate = '',
+  loading = false,
+  error = '',
   onClose,
 }) {
   const groups = useMemo(
-    () => buildAssignmentBoardGroups(filterCurrentAssignmentBoardItems(assignments)),
-    [assignments],
+    () => {
+      const filtered = mode === 'previous-day'
+        ? filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+          .filter((assignment) => assignment.outstandingSeatNumbers?.length)
+        : filterCurrentAssignmentBoardItems(assignments)
+      return buildAssignmentBoardGroups(filtered)
+    },
+    [assignments, mode, referenceDate],
   )
   const reminderGroups = useMemo(
     () => buildQuizReminderBoardGroups(quizReminders),
     [quizReminders],
   )
+  const isPreviousDay = mode === 'previous-day'
+  const referenceLabel = referenceDate
+    ? new Intl.DateTimeFormat('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short' })
+      .format(new Date(`${referenceDate}T12:00:00`))
+    : '前一日'
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -106,8 +135,8 @@ export default function AssignmentBoard({
     <div className="assignment-board-overlay" role="dialog" aria-modal="true" aria-labelledby="assignment-board-title">
       <header className="assignment-board-header">
         <div>
-          <p>CLASS HOMEWORK BOARD</p>
-          <h1 id="assignment-board-title">全班作業一覽</h1>
+          <p>{isPreviousDay ? 'PREVIOUS CONTACT BOOK' : 'CLASS HOMEWORK BOARD'}</p>
+          <h1 id="assignment-board-title">{isPreviousDay ? `${referenceLabel} 聯絡簿作業` : '全班作業一覽'}</h1>
         </div>
         <button type="button" onClick={onClose} aria-label="關閉全畫面作業看板">
           <X aria-hidden="true" />
@@ -120,15 +149,21 @@ export default function AssignmentBoard({
           groupCode="A"
           assignments={groups.A}
           quizReminders={reminderGroups.A}
-          quizReminderLoading={quizReminderLoading}
-          quizReminderError={quizReminderError}
+          quizReminderLoading={isPreviousDay ? false : quizReminderLoading}
+          quizReminderError={isPreviousDay ? '' : quizReminderError}
+          showOutstandingSeats={isPreviousDay}
+          loading={loading}
+          error={error}
         />
         <AssignmentGroupColumn
           groupCode="B"
           assignments={groups.B}
           quizReminders={reminderGroups.B}
-          quizReminderLoading={quizReminderLoading}
-          quizReminderError={quizReminderError}
+          quizReminderLoading={isPreviousDay ? false : quizReminderLoading}
+          quizReminderError={isPreviousDay ? '' : quizReminderError}
+          showOutstandingSeats={isPreviousDay}
+          loading={loading}
+          error={error}
         />
       </div>
     </div>,

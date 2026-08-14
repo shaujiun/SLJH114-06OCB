@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Ban, BookOpenCheck, CalendarClock, CheckCheck, MonitorUp, Plus, RefreshCw, RotateCcw, Send, UserRoundCheck } from 'lucide-react'
+import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, MonitorUp, Plus, RefreshCw, RotateCcw, Send, UserRoundCheck } from 'lucide-react'
 import {
   cancelAssignment,
   filterAssignmentsByDate,
   getOutstandingAssignmentDates,
   loadAssignments,
+  loadOutstandingAssignmentSeats,
   publishAssignment,
   recordSubmissionCheck,
   restoreAssignment,
@@ -12,6 +13,7 @@ import {
 } from '../services/adminService.js'
 import { loadDailyQuizReminderSettings } from '../services/quizReminderService.js'
 import AssignmentBoard from './AssignmentBoard.jsx'
+import { filterPreviousDayAssignmentBoardItems, previousLocalDateString } from '../lib/assignmentBoard.js'
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
 
@@ -63,6 +65,7 @@ export default function AssignmentManagement({
   hideTermPicker = false,
   allowQuizReminders = false,
   allowAssignmentBoard = false,
+  allowPreviousDayBoard = false,
   filterByOutstandingDate = false,
 }) {
   const isHelperMode = submissionStage === 'helper'
@@ -87,6 +90,10 @@ export default function AssignmentManagement({
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
+  const [showPreviousDayBoard, setShowPreviousDayBoard] = useState(false)
+  const [previousDayAssignments, setPreviousDayAssignments] = useState([])
+  const [previousDayBoardLoading, setPreviousDayBoardLoading] = useState(false)
+  const [previousDayBoardError, setPreviousDayBoardError] = useState('')
   const [boardQuizReminders, setBoardQuizReminders] = useState([])
   const [boardQuizReminderLoading, setBoardQuizReminderLoading] = useState(false)
   const [boardQuizReminderError, setBoardQuizReminderError] = useState('')
@@ -250,12 +257,35 @@ export default function AssignmentManagement({
     }
   }
 
+  async function openPreviousDayBoard() {
+    const referenceDate = previousLocalDateString()
+    const candidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+    setShowPreviousDayBoard(true)
+    setPreviousDayAssignments(candidates)
+    setPreviousDayBoardError('')
+    setPreviousDayBoardLoading(true)
+    try {
+      const seatsByAssignment = await loadOutstandingAssignmentSeats({
+        assignmentIds: candidates.map((assignment) => assignment.id),
+      })
+      setPreviousDayAssignments(candidates.map((assignment) => ({
+        ...assignment,
+        outstandingSeatNumbers: seatsByAssignment[assignment.id] || [],
+      })))
+    } catch (error) {
+      setPreviousDayBoardError(error.message)
+    } finally {
+      setPreviousDayBoardLoading(false)
+    }
+  }
+
   return (
     <section className="assignment-management">
       <div className="student-page-heading">
         <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '共同、A 組與 B 組作業會依發布當下的學生分組保存對象。'}</p></div>
-        {(allowAssignmentBoard || !hideTermPicker) && <div className="assignment-heading-actions">
+        {(allowAssignmentBoard || allowPreviousDayBoard || !hideTermPicker) && <div className="assignment-heading-actions">
           {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={openAssignmentBoard}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
+          {allowPreviousDayBoard && <button className="assignment-board-launch is-previous-day" type="button" onClick={openPreviousDayBoard}><CalendarSearch aria-hidden="true" />前一日聯絡簿</button>}
           {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
         </div>}
       </div>
@@ -317,6 +347,14 @@ export default function AssignmentManagement({
         quizReminderLoading={boardQuizReminderLoading}
         quizReminderError={boardQuizReminderError}
         onClose={() => setShowAssignmentBoard(false)}
+      />}
+      {showPreviousDayBoard && <AssignmentBoard
+        assignments={previousDayAssignments}
+        mode="previous-day"
+        referenceDate={previousLocalDateString()}
+        loading={previousDayBoardLoading}
+        error={previousDayBoardError}
+        onClose={() => setShowPreviousDayBoard(false)}
       />}
     </section>
   )
