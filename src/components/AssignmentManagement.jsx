@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, MonitorUp, Plus, RefreshCw, RotateCcw, Send, UserRoundCheck } from 'lucide-react'
+import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, MonitorUp, Pencil, Plus, RefreshCw, RotateCcw, Save, Send, UserRoundCheck, X } from 'lucide-react'
 import {
   cancelAssignment,
   filterAssignmentsByDate,
@@ -10,6 +10,7 @@ import {
   recordSubmissionCheck,
   restoreAssignment,
   sortAssignmentsByTarget,
+  updateAssignment,
 } from '../services/adminService.js'
 import { loadRecentCalendarHolidays } from '../services/calendarService.js'
 import { loadDailyQuizReminderSettings } from '../services/quizReminderService.js'
@@ -38,6 +39,13 @@ function formatCompactDateTime(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '未設定'
   return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function toLocalDateTimeInput(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
 }
 
 function formatAssignmentDate(value) {
@@ -90,6 +98,9 @@ export default function AssignmentManagement({
   const [submissionSavingId, setSubmissionSavingId] = useState('')
   const [cancellingId, setCancellingId] = useState('')
   const [restoringId, setRestoringId] = useState('')
+  const [editingAssignmentId, setEditingAssignmentId] = useState('')
+  const [editForm, setEditForm] = useState(null)
+  const [editSaving, setEditSaving] = useState(false)
   const [showCancelledAssignments, setShowCancelledAssignments] = useState(false)
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
@@ -136,7 +147,16 @@ export default function AssignmentManagement({
         loadAssignments(query),
         isHelperMode ? Promise.resolve([]) : loadAssignments({ ...query, isActive: false }),
       ])
-      setAssignments(sortAssignmentsByTarget(rows.filter((assignment) => {
+      setAssignments(sortAssignmentsByTarget(rows.map((assignment) => {
+        const subject = dashboard.classSubjects.find((item) => item.id === assignment.classSubjectId)
+        return {
+          ...assignment,
+          subject: {
+            ...assignment.subject,
+            allowedTargetGroups: subject?.allowedTargetGroups,
+          },
+        }
+      }).filter((assignment) => {
         const subject = dashboard.classSubjects.find((item) => item.id === assignment.classSubjectId)
         const target = assignment.targetType === 'common' ? 'common' : assignment.targetGroupCode
         return allowedTargets(subject).includes(target)
@@ -262,6 +282,59 @@ export default function AssignmentManagement({
     }
   }
 
+  function startEditingAssignment(assignment) {
+    setTrackingAssignmentId('')
+    setEditingAssignmentId(assignment.id)
+    setEditForm({
+      assignmentDate: assignment.assignmentDate,
+      dueAt: toLocalDateTimeInput(assignment.dueAt),
+      content: assignment.content,
+      targetType: assignment.targetType,
+      targetGroupCode: assignment.targetGroupCode || 'A',
+    })
+    setNotice(null)
+  }
+
+  function stopEditingAssignment() {
+    if (editSaving) return
+    setEditingAssignmentId('')
+    setEditForm(null)
+  }
+
+  async function saveAssignmentEdit(event, assignment) {
+    event.preventDefault()
+    if (!editForm?.content.trim()) {
+      setNotice({ type: 'error', message: '請輸入作業內容。' })
+      return
+    }
+    if (!editForm.dueAt || new Date(editForm.dueAt) < new Date(`${editForm.assignmentDate}T00:00:00`)) {
+      setNotice({ type: 'error', message: '繳交期限不得早於作業日期。' })
+      return
+    }
+
+    setEditSaving(true)
+    setNotice(null)
+    try {
+      const result = await updateAssignment({
+        assignmentId: assignment.id,
+        ...editForm,
+      })
+      setEditingAssignmentId('')
+      setEditForm(null)
+      await load()
+      setNotice({
+        type: 'success',
+        message: result.targetChanged
+          ? `作業已修改，學生名單已重新建立為 ${result.recipientCount} 人。`
+          : '作業內容已修改。',
+      })
+    } catch (error) {
+      setNotice({ type: 'error', message: error.message })
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   async function openPreviousDayBoard() {
     let referenceDate = previousSchoolDateString()
     let warningMessage = ''
@@ -349,7 +422,15 @@ export default function AssignmentManagement({
               <div className="assignment-item-copy"><span className={`assignment-audience is-${item.targetType === 'common' ? 'common' : item.targetGroupCode.toLowerCase()}`}>{item.targetType === 'common' ? '共同' : `${item.targetGroupCode} 組`}</span><strong>{item.subject?.name}・{item.content}</strong></div>
               <div className="assignment-item-meta"><span><CalendarClock />期限：{formatCompactDateTime(item.dueAt)}</span><small>發布者：{item.publisher}・{item.recipientCount} 人</small></div>
             </div>
-            <div className="assignment-submission-actions"><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => setTrackingAssignmentId((current) => current === item.id ? '' : item.id)}><UserRoundCheck />登記例外學生</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
+            <div className="assignment-submission-actions"><button className="assignment-edit-button" type="button" onClick={() => startEditingAssignment(item)}><Pencil />編輯作業</button><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => { setEditingAssignmentId(''); setEditForm(null); setTrackingAssignmentId((current) => current === item.id ? '' : item.id) }}><UserRoundCheck />登記例外學生</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
+            {editingAssignmentId === item.id && editForm && <form className="assignment-edit-form" onSubmit={(event) => saveAssignmentEdit(event, item)}>
+              <div className="assignment-edit-heading"><div><strong>編輯作業</strong><span>科目維持為「{item.subject?.name || '未設定科目'}」</span></div><button type="button" onClick={stopEditingAssignment} disabled={editSaving} aria-label="取消編輯"><X /></button></div>
+              <label><span>作業內容</span><textarea required maxLength="1000" value={editForm.content} onChange={(event) => setEditForm({ ...editForm, content: event.target.value })} /></label>
+              <div className="student-form-grid"><label><span>作業日期</span><input required type="date" value={editForm.assignmentDate} onChange={(event) => setEditForm({ ...editForm, assignmentDate: event.target.value })} /></label><label><span>繳交期限</span><input required type="datetime-local" min={editForm.assignmentDate ? `${editForm.assignmentDate}T00:00` : undefined} value={editForm.dueAt} onChange={(event) => setEditForm({ ...editForm, dueAt: event.target.value })} /></label></div>
+              <fieldset className="assignment-targets"><legend>適用對象</legend><div>{allowedTargets(item.subject).includes('common') && <button className={editForm.targetType === 'common' ? 'is-active' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'common' })}>共同作業</button>}{allowedTargets(item.subject).includes('A') && <button className={editForm.targetType === 'group' && editForm.targetGroupCode === 'A' ? 'is-active is-a' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'group', targetGroupCode: 'A' })}>A 組</button>}{allowedTargets(item.subject).includes('B') && <button className={editForm.targetType === 'group' && editForm.targetGroupCode === 'B' ? 'is-active is-b' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'group', targetGroupCode: 'B' })}>B 組</button>}</div></fieldset>
+              <p className="assignment-edit-hint">已有繳交或例外紀錄時，仍可修改文字、日期與期限，但不可更換組別。</p>
+              <div className="assignment-edit-actions"><button type="submit" disabled={editSaving}><Save />{editSaving ? '儲存中…' : '儲存修改'}</button><button type="button" disabled={editSaving} onClick={stopEditingAssignment}><X />取消</button></div>
+            </form>}
             {trackingAssignmentId === item.id && <SubmissionTrackingPanel assignment={item} stage={submissionStage} onClose={() => setTrackingAssignmentId('')} onNotice={(type, message) => setNotice({ type, message })} onSaved={load} />}
           </article>)}</div>
           {!isHelperMode && <section className="cancelled-assignment-panel">

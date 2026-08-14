@@ -502,6 +502,46 @@ export async function publishAssignment({
   return data
 }
 
+export async function updateAssignment({
+  assignmentId,
+  assignmentDate,
+  content,
+  dueAt,
+  targetType,
+  targetGroupCode,
+}) {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('update_contact_book_assignment', {
+    p_assignment_id: assignmentId,
+    p_assignment_date: assignmentDate,
+    p_content: content.trim(),
+    p_due_at: new Date(dueAt).toISOString(),
+    p_target_type: targetType,
+    p_target_group_code: targetType === 'group' ? targetGroupCode : null,
+  })
+  if (error) {
+    const databaseMessage = error.message || ''
+    let message = '作業修改失敗，請重新整理後再試一次。'
+    if (databaseMessage.includes('assignment_target_locked')) {
+      message = '這項作業已有繳交或例外紀錄，只能修改內容、日期與期限，不能再更換組別。'
+    } else if (databaseMessage.includes('empty_assignment_audience')) {
+      message = '所選分組目前沒有學生，組別未變更。'
+    } else if (databaseMessage.includes('update_target_permission_required')) {
+      message = '目前帳號沒有把作業改成這個組別的權限。'
+    } else if (databaseMessage.includes('update_permission_required')) {
+      message = '目前帳號沒有編輯這項作業的權限。'
+    } else if (databaseMessage.includes('invalid_assignment_data')) {
+      message = '請確認作業內容、作業日期與繳交期限。'
+    } else if (databaseMessage.includes('invalid_assignment')) {
+      message = '找不到這項作業，可能已被取消，請重新整理。'
+    } else if (error.code === 'PGRST202') {
+      message = '作業編輯功能尚未完成資料庫更新，請稍後再試。'
+    }
+    throw new Error(message)
+  }
+  return data
+}
+
 export async function cancelAssignment({ assignmentId }) {
   const client = requireSupabase()
   const { data, error } = await client.rpc('cancel_contact_book_assignment', {

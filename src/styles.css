@@ -2685,6 +2685,120 @@ footer {
   background: #dff7ef;
 }
 
+.assignment-submission-actions button.assignment-edit-button {
+  color: #4b3b7f;
+  background: #eee7ff;
+  border-color: #806da9;
+}
+
+.assignment-edit-form {
+  display: grid;
+  gap: 13px;
+  margin-top: 14px;
+  padding: 16px;
+  background: #fffdf8;
+  border: 2px solid #8a78b2;
+  border-radius: 14px;
+}
+
+.assignment-edit-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assignment-edit-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.assignment-edit-heading strong {
+  color: #443675;
+  font-family: var(--display-font);
+  font-size: 18pt;
+}
+
+.assignment-edit-heading span,
+.assignment-edit-hint {
+  color: #6d6874;
+  font-size: 12pt;
+  font-weight: 900;
+}
+
+.assignment-edit-heading > button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: #66577f;
+  background: white;
+  border: 1.5px solid #8a78b2;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.assignment-edit-heading svg {
+  width: 19px;
+}
+
+.assignment-edit-form > label,
+.assignment-edit-form .student-form-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 900;
+}
+
+.assignment-edit-form :is(textarea, input) {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  background: white;
+  border: 1.5px solid #9c91ab;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.assignment-edit-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.assignment-edit-hint {
+  margin: 0 !important;
+  color: #7a5218 !important;
+  font-size: 11pt !important;
+  line-height: 1.5;
+}
+
+.assignment-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.assignment-edit-actions button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 13px;
+  color: #352b70;
+  background: #e9e2fb;
+  border: 1.5px solid #7663a0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.assignment-edit-actions button:last-child {
+  color: #685f6e;
+  background: white;
+  border-color: #a69ca8;
+}
+
 .assignment-submission-actions button.assignment-cancel-button {
   color: #9e3540;
   background: #fff0f1;
