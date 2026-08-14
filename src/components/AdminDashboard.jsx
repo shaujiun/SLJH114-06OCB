@@ -411,7 +411,7 @@ export default function AdminDashboard({ user, onExit, learningSystemUrl }) {
           <LearningResourceManagement dashboard={dashboard} onNotice={handleSectionNotice} />
         )}
         {!loading && dashboard && activeSection === 'assignments' && (
-          <AssignmentManagement dashboard={dashboard} allowQuizReminders filterByOutstandingDate />
+          <AssignmentManagement dashboard={dashboard} allowQuizReminders allowPreviousDayBoard filterByOutstandingDate />
         )}
       </main>
     </div>

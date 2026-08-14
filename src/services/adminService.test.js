@@ -10,6 +10,7 @@ import {
   getAssignmentPublishedDate,
   getOutstandingAssignmentDates,
   isFollowUpOverdue,
+  mapOutstandingAssignmentSeats,
   mapSubmissionTrackingData,
   mapClassSubjectRow,
   regenerateStudentActivation,
@@ -150,6 +151,39 @@ describe('教師核准服務', () => {
 })
 
 describe('作業發布服務', () => {
+  it('前一日聯絡簿只列出仍在例外名單且非免繳學生的座號', () => {
+    const seats = mapOutstandingAssignmentSeats({
+      recipients: [
+        { assignment_id: 'assignment-1', student_id: 'student-3', submitted_at: null, students: { seat_number: 3 } },
+        { assignment_id: 'assignment-1', student_id: 'student-1', submitted_at: null, students: { seat_number: 1 } },
+        { assignment_id: 'assignment-1', student_id: 'student-2', submitted_at: '2026-08-14T08:00:00+08:00', students: { seat_number: 2 } },
+        { assignment_id: 'assignment-1', student_id: 'student-4', submitted_at: null, students: { seat_number: 4 } },
+        { assignment_id: 'assignment-2', student_id: 'student-8', submitted_at: null, students: { seat_number: 8 } },
+      ],
+      exceptions: [
+        { assignment_id: 'assignment-1', student_id: 'student-1', current_reason: 'incomplete', workflow_state: 'open' },
+        { assignment_id: 'assignment-1', student_id: 'student-3', current_reason: 'not_brought', workflow_state: 'open' },
+        { assignment_id: 'assignment-1', student_id: 'student-4', current_reason: 'exempt', workflow_state: 'open' },
+        { assignment_id: 'assignment-2', student_id: 'student-8', current_reason: 'leave', workflow_state: 'open' },
+      ],
+    })
+
+    expect(seats).toEqual({
+      'assignment-1': [1, 3],
+      'assignment-2': [8],
+    })
+  })
+
+  it('作業沒有例外名單時不會出現在前一日聯絡簿', () => {
+    expect(mapOutstandingAssignmentSeats({
+      recipients: [
+        { assignment_id: 'group-a', student_id: 'student-1', submitted_at: null, students: { seat_number: 1 } },
+        { assignment_id: 'group-a', student_id: 'student-2', submitted_at: null, students: { seat_number: 2 } },
+      ],
+      exceptions: [],
+    })).toEqual({})
+  })
+
   it('已發布作業固定依共同、A 組、B 組排列', () => {
     const sorted = sortAssignmentsByTarget([
       { id: 'b-new', targetType: 'group', targetGroupCode: 'B', dueAt: '2026-08-13T08:00:00+08:00' },

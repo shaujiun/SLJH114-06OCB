@@ -2418,6 +2418,11 @@ footer {
   flex: 0 0 auto;
 }
 
+.assignment-board-launch.is-previous-day {
+  color: #185a50;
+  background: linear-gradient(135deg, #d9f4ec, #e6f2ff);
+}
+
 .assignment-layout-grid {
   display: grid;
   grid-template-columns: minmax(330px, 0.85fr) minmax(440px, 1.15fr);
@@ -4686,6 +4691,39 @@ footer {
   font-size: clamp(15pt, 2vw, 23pt);
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.assignment-board-item-copy {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.assignment-board-item-copy > strong {
+  min-width: 0;
+  font-size: clamp(15pt, 2vw, 23pt);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.assignment-board-item-copy > small {
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  color: #71410a;
+  background: #fff0c7;
+  border: 1px solid #d6aa53;
+  border-radius: 10px;
+  font-size: clamp(12pt, 1.35vw, 15pt);
+  font-weight: 900;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.assignment-board-empty.is-error {
+  padding: 20px;
+  color: #8b2d24;
+  text-align: center;
 }
 
 .assignment-board-empty {

@@ -379,6 +379,58 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
   })
 }
 
+export function mapOutstandingAssignmentSeats({ recipients = [], exceptions = [] }) {
+  const openExceptionRecipients = new Set(
+    exceptions
+      .filter((item) => item.workflow_state === 'open' && item.current_reason !== 'exempt')
+      .map((item) => `${item.assignment_id}:${item.student_id}`),
+  )
+
+  return recipients.reduce((result, recipient) => {
+    if (recipient.submitted_at) return result
+    if (!openExceptionRecipients.has(`${recipient.assignment_id}:${recipient.student_id}`)) return result
+
+    const student = relation(recipient.students)
+    const seatNumber = Number(student?.seat_number)
+    if (!Number.isFinite(seatNumber)) return result
+
+    const seats = result[recipient.assignment_id] || []
+    if (!seats.includes(seatNumber)) seats.push(seatNumber)
+    seats.sort((left, right) => left - right)
+    result[recipient.assignment_id] = seats
+    return result
+  }, {})
+}
+
+export async function loadOutstandingAssignmentSeats({ assignmentIds = [] }) {
+  const ids = [...new Set((assignmentIds || []).filter(Boolean))]
+  if (!ids.length) return {}
+
+  const client = requireSupabase()
+  const [recipientsResult, exceptionsResult] = await Promise.all([
+    client
+      .from('assignment_recipients')
+      .select('assignment_id,student_id,submitted_at,students!inner(seat_number)')
+      .in('assignment_id', ids),
+    client
+      .from('submission_exceptions')
+      .select('assignment_id,student_id,current_reason,workflow_state')
+      .in('assignment_id', ids),
+  ])
+
+  const recipients = requireData(
+    recipientsResult.data,
+    recipientsResult.error,
+    '無法讀取前一日作業的學生名單。',
+  )
+  const exceptions = requireData(
+    exceptionsResult.data,
+    exceptionsResult.error,
+    '無法讀取前一日作業的免繳紀錄。',
+  )
+  return mapOutstandingAssignmentSeats({ recipients, exceptions })
+}
+
 export function getAssignmentPublishedDate(assignment) {
   if (!assignment?.publishedAt) return assignment?.assignmentDate || ''
   const date = new Date(assignment.publishedAt)
