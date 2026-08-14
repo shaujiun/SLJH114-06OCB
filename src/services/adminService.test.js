@@ -19,6 +19,7 @@ import {
   restoreAssignment,
   sortAssignmentsByTarget,
   updateClassSubjects,
+  updateAssignment,
   updateStudentSettings,
 } from './adminService.js'
 
@@ -264,6 +265,46 @@ describe('作業發布服務', () => {
     expect(rpc).toHaveBeenCalledWith('restore_contact_book_assignment', {
       p_assignment_id: 'assignment-id',
     })
+  })
+
+  it('編輯共同作業時不傳分組代碼', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { recipientCount: 2 }, error: null })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await updateAssignment({
+      assignmentId: 'assignment-id',
+      assignmentDate: '2026-08-10',
+      content: ' 修正後的作業 ',
+      dueAt: '2026-08-11T08:00',
+      targetType: 'common',
+      targetGroupCode: 'B',
+    })
+
+    expect(rpc).toHaveBeenCalledWith('update_contact_book_assignment', {
+      p_assignment_id: 'assignment-id',
+      p_assignment_date: '2026-08-10',
+      p_content: '修正後的作業',
+      p_due_at: new Date('2026-08-11T08:00').toISOString(),
+      p_target_type: 'common',
+      p_target_group_code: null,
+    })
+  })
+
+  it('已有繳交紀錄時會說明組別不可修改', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'assignment_target_locked' },
+    })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await expect(updateAssignment({
+      assignmentId: 'assignment-id',
+      assignmentDate: '2026-08-10',
+      content: '修正後的作業',
+      dueAt: '2026-08-11T08:00',
+      targetType: 'group',
+      targetGroupCode: 'B',
+    })).rejects.toThrow('已有繳交或例外紀錄')
   })
 
   it('需補考會以不含補交期限的例外原因送出', async () => {
