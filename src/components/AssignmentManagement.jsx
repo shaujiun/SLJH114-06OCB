@@ -11,9 +11,13 @@ import {
   restoreAssignment,
   sortAssignmentsByTarget,
 } from '../services/adminService.js'
+import { loadRecentCalendarHolidays } from '../services/calendarService.js'
 import { loadDailyQuizReminderSettings } from '../services/quizReminderService.js'
 import AssignmentBoard from './AssignmentBoard.jsx'
-import { filterPreviousDayAssignmentBoardItems, previousLocalDateString } from '../lib/assignmentBoard.js'
+import {
+  filterPreviousDayAssignmentBoardItems,
+  previousSchoolDateString,
+} from '../lib/assignmentBoard.js'
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
 
@@ -92,6 +96,7 @@ export default function AssignmentManagement({
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
   const [showPreviousDayBoard, setShowPreviousDayBoard] = useState(false)
   const [previousDayAssignments, setPreviousDayAssignments] = useState([])
+  const [previousDayReferenceDate, setPreviousDayReferenceDate] = useState('')
   const [previousDayBoardLoading, setPreviousDayBoardLoading] = useState(false)
   const [previousDayBoardError, setPreviousDayBoardError] = useState('')
   const [boardQuizReminders, setBoardQuizReminders] = useState([])
@@ -258,13 +263,20 @@ export default function AssignmentManagement({
   }
 
   async function openPreviousDayBoard() {
-    const referenceDate = previousLocalDateString()
-    const candidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+    const initialReferenceDate = previousSchoolDateString()
     setShowPreviousDayBoard(true)
-    setPreviousDayAssignments(candidates)
+    setPreviousDayReferenceDate(initialReferenceDate)
+    setPreviousDayAssignments([])
     setPreviousDayBoardError('')
     setPreviousDayBoardLoading(true)
     try {
+      const holidays = await loadRecentCalendarHolidays({
+        classId: dashboard.classInfo.id,
+        beforeDate: localDateString(),
+      })
+      const referenceDate = previousSchoolDateString(new Date(), holidays)
+      const candidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+      setPreviousDayReferenceDate(referenceDate)
       const seatsByAssignment = await loadOutstandingAssignmentSeats({
         assignmentIds: candidates.map((assignment) => assignment.id),
       })
@@ -351,7 +363,7 @@ export default function AssignmentManagement({
       {showPreviousDayBoard && <AssignmentBoard
         assignments={previousDayAssignments}
         mode="previous-day"
-        referenceDate={previousLocalDateString()}
+        referenceDate={previousDayReferenceDate}
         loading={previousDayBoardLoading}
         error={previousDayBoardError}
         onClose={() => setShowPreviousDayBoard(false)}

@@ -48,21 +48,41 @@ export function previousLocalDateString(now = new Date()) {
   return localDateValue(date)
 }
 
+export function previousSchoolDateString(now = new Date(), holidayEvents = []) {
+  const date = now instanceof Date ? new Date(now.getTime()) : new Date(now)
+  if (!Number.isFinite(date.getTime())) return ''
+  const holidays = Array.isArray(holidayEvents) ? holidayEvents : []
+
+  for (let attempts = 0; attempts < 370; attempts += 1) {
+    date.setDate(date.getDate() - 1)
+    const dateKey = localDateValue(date)
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6
+    const isHoliday = holidays.some((event) => (
+      event?.category === 'holiday'
+      && event?.startsOn <= dateKey
+      && event?.endsOn >= dateKey
+    ))
+    if (!isWeekend && !isHoliday) return dateKey
+  }
+
+  return previousLocalDateString(now)
+}
+
 export function filterPreviousDayAssignmentBoardItems(
   assignments = [],
   referenceDate = previousLocalDateString(),
   now = new Date(),
 ) {
-  const currentTime = now instanceof Date ? now.getTime() : new Date(now).getTime()
+  const referenceEndTime = new Date(`${referenceDate}T23:59:59.999`).getTime()
 
   return (Array.isArray(assignments) ? assignments : []).filter((assignment) => {
     const publishedDate = assignment?.publishedAt
       ? localDateValue(assignment.publishedAt)
       : assignment?.assignmentDate
     if (!publishedDate || publishedDate > referenceDate) return false
-    if (assignment.isFullySubmitted) return false
+    if (publishedDate === referenceDate) return true
 
     const dueTime = new Date(assignment?.dueAt).getTime()
-    return Number.isFinite(dueTime) && dueTime >= currentTime
+    return Number.isFinite(dueTime) && dueTime > referenceEndTime
   })
 }

@@ -174,7 +174,7 @@ describe('作業發布服務', () => {
     })
   })
 
-  it('作業沒有例外名單時不會出現在前一日聯絡簿', () => {
+  it('作業沒有例外名單時不產生座號標籤', () => {
     expect(mapOutstandingAssignmentSeats({
       recipients: [
         { assignment_id: 'group-a', student_id: 'student-1', submitted_at: null, students: { seat_number: 1 } },
