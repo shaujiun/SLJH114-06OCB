@@ -4726,6 +4726,17 @@ footer {
   text-align: center;
 }
 
+.assignment-board-warning {
+  margin: 12px 14px 0;
+  padding: 9px 12px;
+  color: #7a3b15;
+  background: #fff0d5;
+  border: 1.5px solid #d79a54;
+  border-radius: 11px;
+  font-size: clamp(11pt, 1.2vw, 13pt);
+  line-height: 1.45;
+}
+
 .assignment-board-empty {
   display: grid;
   flex: 1 1 auto;

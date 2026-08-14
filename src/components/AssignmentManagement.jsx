@@ -263,10 +263,15 @@ export default function AssignmentManagement({
   }
 
   async function openPreviousDayBoard() {
-    const initialReferenceDate = previousSchoolDateString()
+    let referenceDate = previousSchoolDateString()
+    let warningMessage = ''
+    const initialCandidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
     setShowPreviousDayBoard(true)
-    setPreviousDayReferenceDate(initialReferenceDate)
-    setPreviousDayAssignments([])
+    setPreviousDayReferenceDate(referenceDate)
+    setPreviousDayAssignments(initialCandidates.map((assignment) => ({
+      ...assignment,
+      outstandingSeatNumbers: [],
+    })))
     setPreviousDayBoardError('')
     setPreviousDayBoardLoading(true)
     try {
@@ -274,9 +279,21 @@ export default function AssignmentManagement({
         classId: dashboard.classInfo.id,
         beforeDate: localDateString(),
       })
-      const referenceDate = previousSchoolDateString(new Date(), holidays)
-      const candidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
-      setPreviousDayReferenceDate(referenceDate)
+      referenceDate = previousSchoolDateString(new Date(), holidays)
+    } catch (error) {
+      warningMessage = `${error.message} 已先依週末規則顯示作業。`
+    }
+
+    const candidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+    setPreviousDayReferenceDate(referenceDate)
+    setPreviousDayAssignments(candidates.map((assignment) => ({
+      ...assignment,
+      outstandingSeatNumbers: [],
+    })))
+    setPreviousDayBoardLoading(false)
+    setPreviousDayBoardError(warningMessage)
+
+    try {
       const seatsByAssignment = await loadOutstandingAssignmentSeats({
         assignmentIds: candidates.map((assignment) => assignment.id),
       })
@@ -285,9 +302,10 @@ export default function AssignmentManagement({
         outstandingSeatNumbers: seatsByAssignment[assignment.id] || [],
       })))
     } catch (error) {
-      setPreviousDayBoardError(error.message)
-    } finally {
-      setPreviousDayBoardLoading(false)
+      setPreviousDayBoardError([
+        warningMessage,
+        `${error.message} 作業內容仍會正常顯示。`,
+      ].filter(Boolean).join(' '))
     }
   }
 
