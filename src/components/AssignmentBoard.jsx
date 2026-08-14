@@ -58,10 +58,9 @@ function AssignmentGroupColumn({
           error={quizReminderError}
         />
 
+        {error && <div className="assignment-board-warning"><strong>{error}</strong></div>}
         {loading ? (
           <div className="assignment-board-empty"><RefreshCw className="is-spinning" aria-hidden="true" /><strong>讀取待完成座號…</strong></div>
-        ) : error ? (
-          <div className="assignment-board-empty is-error"><strong>{error}</strong></div>
         ) : assignments.length > 0 ? (
           <ol className="assignment-board-list">
             {assignments.map((assignment) => (
