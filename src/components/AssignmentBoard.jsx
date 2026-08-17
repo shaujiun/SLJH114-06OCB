@@ -11,14 +11,14 @@ import {
   quizReminderBoardDisplayText,
 } from '../services/quizReminderService.js'
 
-function QuizReminderSection({ reminders, loading, error }) {
+function QuizReminderSection({ reminders, loading, error, title = '今日成績提醒' }) {
   if (!loading && !error && reminders.length === 0) return null
 
   return (
     <section className={`assignment-board-score-reminders${error ? ' is-error' : ''}`}>
       <div>
         <ClipboardPenLine aria-hidden="true" />
-        <h3>今日成績提醒</h3>
+        <h3>{title}</h3>
       </div>
       {loading && <p><RefreshCw className="is-spinning" aria-hidden="true" />讀取中…</p>}
       {!loading && error && <p>{error}</p>}
@@ -56,6 +56,7 @@ function AssignmentGroupColumn({
           reminders={quizReminders}
           loading={quizReminderLoading}
           error={quizReminderError}
+          title={showOutstandingSeats ? '成績填寫項目' : '今日成績提醒'}
         />
 
         {error && <div className="assignment-board-warning"><strong>{error}</strong></div>}
@@ -147,8 +148,8 @@ export default function AssignmentBoard({
           groupCode="A"
           assignments={groups.A}
           quizReminders={reminderGroups.A}
-          quizReminderLoading={isPreviousDay ? false : quizReminderLoading}
-          quizReminderError={isPreviousDay ? '' : quizReminderError}
+          quizReminderLoading={quizReminderLoading}
+          quizReminderError={quizReminderError}
           showOutstandingSeats={isPreviousDay}
           loading={loading}
           error={error}
@@ -157,8 +158,8 @@ export default function AssignmentBoard({
           groupCode="B"
           assignments={groups.B}
           quizReminders={reminderGroups.B}
-          quizReminderLoading={isPreviousDay ? false : quizReminderLoading}
-          quizReminderError={isPreviousDay ? '' : quizReminderError}
+          quizReminderLoading={quizReminderLoading}
+          quizReminderError={quizReminderError}
           showOutstandingSeats={isPreviousDay}
           loading={loading}
           error={error}
