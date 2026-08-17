@@ -110,6 +110,9 @@ export default function AssignmentManagement({
   const [previousDayReferenceDate, setPreviousDayReferenceDate] = useState('')
   const [previousDayBoardLoading, setPreviousDayBoardLoading] = useState(false)
   const [previousDayBoardError, setPreviousDayBoardError] = useState('')
+  const [previousDayQuizReminders, setPreviousDayQuizReminders] = useState([])
+  const [previousDayQuizReminderLoading, setPreviousDayQuizReminderLoading] = useState(false)
+  const [previousDayQuizReminderError, setPreviousDayQuizReminderError] = useState('')
   const [boardQuizReminders, setBoardQuizReminders] = useState([])
   const [boardQuizReminderLoading, setBoardQuizReminderLoading] = useState(false)
   const [boardQuizReminderError, setBoardQuizReminderError] = useState('')
@@ -347,6 +350,9 @@ export default function AssignmentManagement({
     })))
     setPreviousDayBoardError('')
     setPreviousDayBoardLoading(true)
+    setPreviousDayQuizReminders([])
+    setPreviousDayQuizReminderError('')
+    setPreviousDayQuizReminderLoading(true)
     try {
       const holidays = await loadRecentCalendarHolidays({
         classId: dashboard.classInfo.id,
@@ -366,20 +372,36 @@ export default function AssignmentManagement({
     setPreviousDayBoardLoading(false)
     setPreviousDayBoardError(warningMessage)
 
-    try {
-      const seatsByAssignment = await loadOutstandingAssignmentSeats({
+    const [seatsResult, remindersResult] = await Promise.allSettled([
+      loadOutstandingAssignmentSeats({
         assignmentIds: candidates.map((assignment) => assignment.id),
-      })
+      }),
+      loadDailyQuizReminderSettings({
+        classId: dashboard.classInfo.id,
+        academicTermId: termId,
+        reminderDate: referenceDate,
+      }),
+    ])
+
+    if (seatsResult.status === 'fulfilled') {
+      const seatsByAssignment = seatsResult.value
       setPreviousDayAssignments(candidates.map((assignment) => ({
         ...assignment,
         outstandingSeatNumbers: seatsByAssignment[assignment.id] || [],
       })))
-    } catch (error) {
+    } else {
       setPreviousDayBoardError([
         warningMessage,
-        `${error.message} 作業內容仍會正常顯示。`,
+        `${seatsResult.reason.message} 作業內容仍會正常顯示。`,
       ].filter(Boolean).join(' '))
     }
+
+    if (remindersResult.status === 'fulfilled') {
+      setPreviousDayQuizReminders(remindersResult.value)
+    } else {
+      setPreviousDayQuizReminderError(remindersResult.reason.message)
+    }
+    setPreviousDayQuizReminderLoading(false)
   }
 
   return (
@@ -461,6 +483,9 @@ export default function AssignmentManagement({
       />}
       {showPreviousDayBoard && <AssignmentBoard
         assignments={previousDayAssignments}
+        quizReminders={previousDayQuizReminders}
+        quizReminderLoading={previousDayQuizReminderLoading}
+        quizReminderError={previousDayQuizReminderError}
         mode="previous-day"
         referenceDate={previousDayReferenceDate}
         loading={previousDayBoardLoading}
