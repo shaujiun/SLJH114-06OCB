@@ -3108,6 +3108,46 @@ footer {
   width: 14px;
 }
 
+.submission-complete-status.is-pending {
+  color: #746b64;
+}
+
+.submission-row-actions {
+  display: grid;
+  justify-items: stretch;
+  gap: 7px;
+  min-width: 0;
+}
+
+.submission-individual-submit-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  color: #215c4d;
+  background: #e1f6ec;
+  border: 1px solid #78bda7;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.submission-individual-submit-button:hover:not(:disabled) {
+  background: #ccebdd;
+}
+
+.submission-individual-submit-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.submission-individual-submit-button svg {
+  width: 16px;
+  flex: 0 0 auto;
+}
+
 .submission-tracking-panel > footer {
   margin-top: 12px;
   padding-top: 11px;

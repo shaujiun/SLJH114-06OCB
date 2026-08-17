@@ -15,6 +15,7 @@ import {
   mapClassSubjectRow,
   regenerateStudentActivation,
   publishAssignment,
+  recordIndividualSubmission,
   recordSubmissionCheck,
   restoreAssignment,
   sortAssignmentsByTarget,
@@ -335,6 +336,7 @@ describe('作業繳交確認服務', () => {
     const result = mapSubmissionTrackingData({
       recipients: [{
         student_id: 'student-id',
+        submitted_at: '2026-08-16T08:00:00Z',
         students: { id: 'student-id', student_id_code: '900001', seat_number: 1, full_name: '測試學生甲' },
       }],
       checks: [],
@@ -351,6 +353,7 @@ describe('作業繳交確認服務', () => {
     })
 
     expect(result.students[0].exception.initialReason).toBe('leave')
+    expect(result.students[0].submittedAt).toBe('2026-08-16T08:00:00Z')
     expect(result.students[0].exception.events.map((event) => event.id)).toEqual(['event-1', 'event-2'])
   })
 
@@ -392,6 +395,26 @@ describe('作業繳交確認服務', () => {
       p_stage: 'helper',
       p_result: 'all_submitted',
     }))
+  })
+
+  it('個別已繳交只傳送指定學生', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { studentId: 'student-id', countsAsLate: false, openExceptionCount: 2 },
+      error: null,
+    })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await recordIndividualSubmission({
+      assignmentId: 'assignment-id',
+      studentId: 'student-id',
+      stage: 'teacher',
+    })
+
+    expect(rpc).toHaveBeenCalledWith('record_individual_assignment_submission', {
+      p_assignment_id: 'assignment-id',
+      p_student_id: 'student-id',
+      p_stage: 'teacher',
+    })
   })
 })
 
