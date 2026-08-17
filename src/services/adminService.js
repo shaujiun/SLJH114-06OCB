@@ -621,6 +621,7 @@ export function mapSubmissionTrackingData({ recipients, checks, exceptions, even
         studentId: student.student_id_code,
         seatNumber: student.seat_number,
         fullName: student.full_name,
+        submittedAt: recipient.submitted_at,
         exception: exception ? {
           id: exception.id,
           initialReason: exception.initial_reason,
@@ -646,7 +647,7 @@ export async function loadSubmissionTracking({ assignmentId }) {
   const [recipientsResult, checksResult, exceptionsResult] = await Promise.all([
     client
       .from('assignment_recipients')
-      .select('student_id,students!inner(id,student_id_code,seat_number,full_name)')
+      .select('student_id,submitted_at,students!inner(id,student_id_code,seat_number,full_name)')
       .eq('assignment_id', assignmentId),
     client
       .from('submission_checks')
@@ -699,6 +700,29 @@ export async function recordSubmissionCheck({ assignmentId, stage = 'teacher', e
       throw new Error('既有的繳交紀錄只能由任課老師或導師修正。')
     }
     throw new Error('繳交狀況儲存失敗，請重新整理後再試。')
+  }
+  return data
+}
+
+export async function recordIndividualSubmission({ assignmentId, studentId, stage = 'teacher' }) {
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('record_individual_assignment_submission', {
+    p_assignment_id: assignmentId,
+    p_student_id: studentId,
+    p_stage: stage,
+  })
+  if (error) {
+    const databaseMessage = error.message || ''
+    if (databaseMessage.includes('submission_permission_required')) {
+      throw new Error('目前帳號沒有登記這位學生已繳交的權限。')
+    }
+    if (databaseMessage.includes('helper_cannot_resolve_existing_exception')) {
+      throw new Error('已有例外紀錄的學生，需由任課老師或導師設為已繳交。')
+    }
+    if (databaseMessage.includes('invalid_assignment_recipient')) {
+      throw new Error('找不到這份作業的指定學生。')
+    }
+    throw new Error('個別已繳交登記失敗，請重新整理後再試。')
   }
   return data
 }

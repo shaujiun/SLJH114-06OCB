@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, History, RefreshCw, Save, X } from 'lucide
 import {
   isFollowUpOverdue,
   loadSubmissionTracking,
+  recordIndividualSubmission,
   recordSubmissionCheck,
 } from '../services/adminService.js'
 
@@ -54,6 +55,7 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
   const [forms, setForms] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [individualSavingId, setIndividualSavingId] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,6 +86,27 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
       ...current,
       [studentId]: { ...current[studentId], ...changes },
     }))
+  }
+
+  async function markIndividualSubmitted(student) {
+    setIndividualSavingId(student.id)
+    try {
+      const result = await recordIndividualSubmission({
+        assignmentId: assignment.id,
+        studentId: student.id,
+        stage,
+      })
+      await load()
+      onNotice(
+        'success',
+        `${student.seatNumber} 號 ${student.fullName} 已個別登記已繳交，其他學生狀態不變${result.countsAsLate ? '，原有遲交紀錄已保留。' : '，未列入遲交。'}`,
+      )
+      await onSaved?.(result)
+    } catch (error) {
+      onNotice('error', error.message)
+    } finally {
+      setIndividualSavingId('')
+    }
   }
 
   async function save() {
@@ -153,17 +176,47 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
                 </label>
                 {form?.selected ? (
                   <>
-                    <select value={form.reason} disabled={lockedExisting} onChange={(event) => update(student.id, {
-                      reason: event.target.value,
-                      followUpDueAt: ['leave', 'official_leave'].includes(event.target.value)
-                        ? form.followUpDueAt || defaultFollowUp(assignment.dueAt)
-                        : '',
-                    })}>{reasonOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
+                    <div className="submission-row-actions">
+                      <select value={form.reason} disabled={lockedExisting} onChange={(event) => update(student.id, {
+                        reason: event.target.value,
+                        followUpDueAt: ['leave', 'official_leave'].includes(event.target.value)
+                          ? form.followUpDueAt || defaultFollowUp(assignment.dueAt)
+                          : '',
+                      })}>{reasonOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
+                      {!lockedExisting && (
+                        <button
+                          className="submission-individual-submit-button"
+                          type="button"
+                          disabled={saving || Boolean(individualSavingId)}
+                          onClick={() => markIndividualSubmitted(student)}
+                        >
+                          <CheckCircle2 />{individualSavingId === student.id ? '登記中…' : '個別設為已繳交'}
+                        </button>
+                      )}
+                    </div>
                     {needsFollowUp && <input aria-label={`${student.fullName}補交期限`} type="datetime-local" disabled={lockedExisting} value={form.followUpDueAt} onChange={(event) => update(student.id, { followUpDueAt: event.target.value })} />}
                     {overdue && <div className="submission-overdue-alert"><AlertTriangle aria-hidden="true" /><span><strong>追繳期限已到</strong>{isHelperStage ? '請通知任課老師或導師處理。' : '請改為未完成、未攜帶、遲交，或修正追繳期限。'}</span></div>}
                   </>
                 ) : (
-                  <span className="submission-complete-status"><CheckCircle2 />{student.exception?.reason === 'retest_required' ? '已補考／本次已繳' : student.exception ? '已補交／本次已繳' : '已繳交'}</span>
+                  <div className="submission-row-actions">
+                    <span className={`submission-complete-status${student.submittedAt ? '' : ' is-pending'}`}>
+                      <CheckCircle2 />{student.exception?.reason === 'retest_required'
+                        ? '已補考／本次已繳'
+                        : student.exception
+                          ? '已補交／本次已繳'
+                          : student.submittedAt ? '已繳交' : '尚未個別登記'}
+                    </span>
+                    {!student.submittedAt && !student.exception && (
+                      <button
+                        className="submission-individual-submit-button"
+                        type="button"
+                        disabled={saving || Boolean(individualSavingId)}
+                        onClick={() => markIndividualSubmitted(student)}
+                      >
+                        <CheckCircle2 />{individualSavingId === student.id ? '登記中…' : '個別設為已繳交'}
+                      </button>
+                    )}
+                  </div>
                 )}
                 {student.exception && (
                   <details className="submission-status-history">
