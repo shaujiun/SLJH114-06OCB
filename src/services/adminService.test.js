@@ -10,6 +10,7 @@ import {
   getAssignmentPublishedDate,
   getOutstandingAssignmentDates,
   isFollowUpOverdue,
+  loadAssignmentRecipientRows,
   mapOutstandingAssignmentSeats,
   mapSubmissionTrackingData,
   mapClassSubjectRow,
@@ -153,6 +154,41 @@ describe('教師核准服務', () => {
 })
 
 describe('作業發布服務', () => {
+  it('作業對象超過 Supabase 單次上限時會繼續分頁讀取', async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, index) => ({
+      assignment_id: 'assignment-1',
+      student_id: `student-${index + 1}`,
+      submitted_at: null,
+    }))
+    const secondPage = [
+      { assignment_id: 'assignment-1', student_id: 'student-1001', submitted_at: null },
+      { assignment_id: 'assignment-1', student_id: 'student-1002', submitted_at: '2026-08-20T08:00:00+08:00' },
+    ]
+    const ranges = []
+    const client = {
+      from: vi.fn(() => {
+        const query = {
+          select: vi.fn(() => query),
+          in: vi.fn(() => query),
+          order: vi.fn(() => query),
+          range: vi.fn((from, to) => {
+            ranges.push([from, to])
+            return Promise.resolve({
+              data: from === 0 ? firstPage : secondPage,
+              error: null,
+            })
+          }),
+        }
+        return query
+      }),
+    }
+
+    const rows = await loadAssignmentRecipientRows(client, ['assignment-1'])
+
+    expect(rows).toHaveLength(1002)
+    expect(ranges).toEqual([[0, 999], [1000, 1999]])
+  })
+
   it('前一日聯絡簿只列出仍在例外名單且非免繳學生的座號', () => {
     const seats = mapOutstandingAssignmentSeats({
       recipients: [

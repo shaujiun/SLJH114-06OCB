@@ -333,6 +333,32 @@ export async function createStudentPasswordReset({ studentId, studentIdCode }) {
   return data
 }
 
+const ASSIGNMENT_RECIPIENT_PAGE_SIZE = 1000
+const ASSIGNMENT_RECIPIENT_ID_BATCH_SIZE = 40
+
+export async function loadAssignmentRecipientRows(client, assignmentIds) {
+  const ids = [...new Set((assignmentIds || []).filter(Boolean))]
+  if (!ids.length) return []
+
+  const recipients = []
+  for (let batchStart = 0; batchStart < ids.length; batchStart += ASSIGNMENT_RECIPIENT_ID_BATCH_SIZE) {
+    const idBatch = ids.slice(batchStart, batchStart + ASSIGNMENT_RECIPIENT_ID_BATCH_SIZE)
+    for (let pageStart = 0; ; pageStart += ASSIGNMENT_RECIPIENT_PAGE_SIZE) {
+      const { data, error } = await client
+        .from('assignment_recipients')
+        .select('assignment_id,student_id,submitted_at')
+        .in('assignment_id', idBatch)
+        .order('assignment_id')
+        .order('student_id')
+        .range(pageStart, pageStart + ASSIGNMENT_RECIPIENT_PAGE_SIZE - 1)
+      const page = requireData(data, error, '無法讀取作業對象。')
+      recipients.push(...page)
+      if (page.length < ASSIGNMENT_RECIPIENT_PAGE_SIZE) break
+    }
+  }
+  return recipients
+}
+
 export async function loadAssignments({ academicTermId, classSubjectIds, isActive = true }) {
   if (Array.isArray(classSubjectIds) && !classSubjectIds.length) return []
   const client = requireSupabase()
@@ -343,14 +369,9 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
     .eq('is_active', isActive)
     .order('due_at', { ascending: false })
   if (classSubjectIds?.length) assignmentQuery = assignmentQuery.in('class_subject_id', classSubjectIds)
-  const [assignmentsResult, recipientsResult] = await Promise.all([
-    assignmentQuery,
-    client
-      .from('assignment_recipients')
-      .select('assignment_id,submitted_at'),
-  ])
+  const assignmentsResult = await assignmentQuery
   const rows = requireData(assignmentsResult.data, assignmentsResult.error, '無法讀取作業清單。')
-  const recipients = requireData(recipientsResult.data, recipientsResult.error, '無法讀取作業對象。')
+  const recipients = await loadAssignmentRecipientRows(client, rows.map((row) => row.id))
   const counts = recipients.reduce((map, row) => map.set(row.assignment_id, (map.get(row.assignment_id) || 0) + 1), new Map())
   const pendingCounts = recipients.reduce((map, row) => {
     if (!row.submitted_at) map.set(row.assignment_id, (map.get(row.assignment_id) || 0) + 1)
