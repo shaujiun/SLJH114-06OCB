@@ -80,6 +80,7 @@ export function filterPreviousDayAssignmentBoardItems(
       ? localDateValue(assignment.publishedAt)
       : assignment?.assignmentDate
     if (!publishedDate || publishedDate > referenceDate) return false
+    if (assignment.isFullySubmitted) return false
     if (publishedDate === referenceDate) return true
 
     const dueTime = new Date(assignment?.dueAt).getTime()
