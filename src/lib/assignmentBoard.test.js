@@ -46,14 +46,15 @@ describe('作業長全畫面作業看板', () => {
   it('前一上課日聯絡簿包含當日發布及更早發布但當時仍未逾期的作業', () => {
     const now = new Date('2026-08-14T10:00:00+08:00')
     const assignments = [
-      { id: 'previous-day-complete', publishedAt: '2026-08-13T09:00:00+08:00', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: true },
+      { id: 'previous-day-open', publishedAt: '2026-08-13T09:00:00+08:00', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false },
+      { id: 'previous-day-complete', publishedAt: '2026-08-13T10:00:00+08:00', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: true },
       { id: 'older-open', publishedAt: '2026-08-11T09:00:00+08:00', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false },
       { id: 'published-today', publishedAt: '2026-08-14T08:00:00+08:00', dueAt: '2026-08-15T08:00:00+08:00', isFullySubmitted: false },
       { id: 'expired-before-reference-ended', publishedAt: '2026-08-12T09:00:00+08:00', dueAt: '2026-08-13T17:00:00+08:00', isFullySubmitted: false },
     ]
 
     expect(filterPreviousDayAssignmentBoardItems(assignments, '2026-08-13', now).map((item) => item.id))
-      .toEqual(['previous-day-complete', 'older-open'])
+      .toEqual(['previous-day-open', 'older-open'])
     expect(previousLocalDateString(now)).toBe('2026-08-13')
   })
 
