@@ -346,7 +346,7 @@ export async function loadAssignmentRecipientRows(client, assignmentIds) {
     for (let pageStart = 0; ; pageStart += ASSIGNMENT_RECIPIENT_PAGE_SIZE) {
       const { data, error } = await client
         .from('assignment_recipients')
-        .select('assignment_id,student_id,submitted_at')
+        .select('assignment_id,student_id,submitted_at,students(seat_number,full_name)')
         .in('assignment_id', idBatch)
         .order('assignment_id')
         .order('student_id')
@@ -357,6 +357,42 @@ export async function loadAssignmentRecipientRows(client, assignmentIds) {
     }
   }
   return recipients
+}
+
+export function mapAssignmentRecipientSummaries(recipients = []) {
+  const summaries = recipients.reduce((result, recipient) => {
+    const summary = result[recipient.assignment_id] || {
+      recipientCount: 0,
+      pendingRecipientCount: 0,
+      pendingStudents: [],
+    }
+    summary.recipientCount += 1
+
+    if (!recipient.submitted_at) {
+      summary.pendingRecipientCount += 1
+      const student = relation(recipient.students)
+      if (student?.full_name) {
+        summary.pendingStudents.push({
+          id: recipient.student_id,
+          seatNumber: Number(student.seat_number),
+          fullName: student.full_name,
+        })
+      }
+    }
+
+    result[recipient.assignment_id] = summary
+    return result
+  }, {})
+
+  Object.values(summaries).forEach((summary) => {
+    summary.pendingStudents.sort((left, right) => {
+      const leftSeat = Number.isFinite(left.seatNumber) ? left.seatNumber : Number.MAX_SAFE_INTEGER
+      const rightSeat = Number.isFinite(right.seatNumber) ? right.seatNumber : Number.MAX_SAFE_INTEGER
+      return leftSeat - rightSeat || left.fullName.localeCompare(right.fullName, 'zh-TW')
+    })
+  })
+
+  return summaries
 }
 
 export async function loadAssignments({ academicTermId, classSubjectIds, isActive = true }) {
@@ -372,14 +408,15 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
   const assignmentsResult = await assignmentQuery
   const rows = requireData(assignmentsResult.data, assignmentsResult.error, '無法讀取作業清單。')
   const recipients = await loadAssignmentRecipientRows(client, rows.map((row) => row.id))
-  const counts = recipients.reduce((map, row) => map.set(row.assignment_id, (map.get(row.assignment_id) || 0) + 1), new Map())
-  const pendingCounts = recipients.reduce((map, row) => {
-    if (!row.submitted_at) map.set(row.assignment_id, (map.get(row.assignment_id) || 0) + 1)
-    return map
-  }, new Map())
+  const recipientSummaries = mapAssignmentRecipientSummaries(recipients)
   return rows.map((row) => {
     const classSubject = relation(row.class_subjects)
     const subject = relation(classSubject?.subjects)
+    const recipientSummary = recipientSummaries[row.id] || {
+      recipientCount: 0,
+      pendingRecipientCount: 0,
+      pendingStudents: [],
+    }
     return {
       id: row.id,
       classSubjectId: row.class_subject_id,
@@ -393,9 +430,9 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
       isActive: row.is_active,
       cancelledAt: row.cancelled_at,
       subject,
-      recipientCount: counts.get(row.id) || 0,
-      pendingRecipientCount: pendingCounts.get(row.id) || 0,
-      isFullySubmitted: (counts.get(row.id) || 0) > 0 && !pendingCounts.get(row.id),
+      ...recipientSummary,
+      isFullySubmitted: recipientSummary.recipientCount > 0
+        && recipientSummary.pendingRecipientCount === 0,
     }
   })
 }

@@ -2659,6 +2659,61 @@ footer {
   width: 17px;
 }
 
+.assignment-items article > .assignment-submission-overview {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 12px;
+  margin-top: 11px;
+  padding: 10px 12px;
+  border: 1.5px solid #d8d0c5;
+  border-radius: 11px;
+}
+
+.assignment-submission-overview.is-pending {
+  background: #fff4df;
+  border-color: #d59b44;
+}
+
+.assignment-submission-overview.is-complete {
+  background: #e4f7ee;
+  border-color: #65ad8e;
+}
+
+.assignment-submission-overview > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #684917;
+  white-space: nowrap;
+}
+
+.assignment-submission-overview.is-complete > strong {
+  color: #286c55;
+}
+
+.assignment-submission-overview > strong svg {
+  width: 17px;
+  height: 17px;
+}
+
+.assignment-pending-students {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 6px !important;
+}
+
+.assignment-pending-students > span {
+  padding: 4px 7px;
+  color: #4b3b2a;
+  background: #fffdf8;
+  border: 1px solid #d8bd8c;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
 .assignment-submission-actions {
   display: flex !important;
   flex-wrap: wrap;
@@ -5334,6 +5389,10 @@ footer {
   .assignment-item-meta {
     justify-items: start;
     white-space: normal;
+  }
+
+  .assignment-items article > .assignment-submission-overview {
+    grid-template-columns: 1fr;
   }
 
   .student-assignment-group-card {
