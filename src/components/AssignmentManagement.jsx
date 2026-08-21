@@ -79,6 +79,7 @@ export default function AssignmentManagement({
   allowAssignmentBoard = false,
   allowPreviousDayBoard = false,
   filterByOutstandingDate = false,
+  showSubmissionOverview = false,
 }) {
   const isHelperMode = submissionStage === 'helper'
   const firstTerm = dashboard.terms[0]
@@ -444,6 +445,20 @@ export default function AssignmentManagement({
               <div className="assignment-item-copy"><span className={`assignment-audience is-${item.targetType === 'common' ? 'common' : item.targetGroupCode.toLowerCase()}`}>{item.targetType === 'common' ? '共同' : `${item.targetGroupCode} 組`}</span><strong>{item.subject?.name}・{item.content}</strong></div>
               <div className="assignment-item-meta"><span><CalendarClock />期限：{formatCompactDateTime(item.dueAt)}</span><small>發布者：{item.publisher}・{item.recipientCount} 人</small></div>
             </div>
+            {showSubmissionOverview && <div className={`assignment-submission-overview ${item.isFullySubmitted ? 'is-complete' : 'is-pending'}`}>
+              {item.isFullySubmitted ? (
+                <strong><CheckCheck aria-hidden="true" />全班已繳</strong>
+              ) : item.pendingRecipientCount > 0 ? (
+                <>
+                  <strong><UserRoundCheck aria-hidden="true" />未繳交 {item.pendingRecipientCount} 人</strong>
+                  <div className="assignment-pending-students">
+                    {item.pendingStudents.map((student) => <span key={student.id}>{student.seatNumber} 號・{student.fullName}</span>)}
+                  </div>
+                </>
+              ) : (
+                <strong><UserRoundCheck aria-hidden="true" />尚無作業對象資料</strong>
+              )}
+            </div>}
             <div className="assignment-submission-actions"><button className="assignment-edit-button" type="button" onClick={() => startEditingAssignment(item)}><Pencil />編輯作業</button><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => { setEditingAssignmentId(''); setEditForm(null); setTrackingAssignmentId((current) => current === item.id ? '' : item.id) }}><UserRoundCheck />登記例外學生</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
             {editingAssignmentId === item.id && editForm && <form className="assignment-edit-form" onSubmit={(event) => saveAssignmentEdit(event, item)}>
               <div className="assignment-edit-heading"><div><strong>編輯作業</strong><span>科目維持為「{item.subject?.name || '未設定科目'}」</span></div><button type="button" onClick={stopEditingAssignment} disabled={editSaving} aria-label="取消編輯"><X /></button></div>
