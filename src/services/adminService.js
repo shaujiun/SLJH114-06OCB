@@ -346,7 +346,7 @@ export async function loadAssignmentRecipientRows(client, assignmentIds) {
     for (let pageStart = 0; ; pageStart += ASSIGNMENT_RECIPIENT_PAGE_SIZE) {
       const { data, error } = await client
         .from('assignment_recipients')
-        .select('assignment_id,student_id,submitted_at,students(seat_number,full_name)')
+        .select('assignment_id,student_id,submitted_at,students(seat_number)')
         .in('assignment_id', idBatch)
         .order('assignment_id')
         .order('student_id')
@@ -371,11 +371,11 @@ export function mapAssignmentRecipientSummaries(recipients = []) {
     if (!recipient.submitted_at) {
       summary.pendingRecipientCount += 1
       const student = relation(recipient.students)
-      if (student?.full_name) {
+      const seatNumber = Number(student?.seat_number)
+      if (Number.isFinite(seatNumber)) {
         summary.pendingStudents.push({
           id: recipient.student_id,
-          seatNumber: Number(student.seat_number),
-          fullName: student.full_name,
+          seatNumber,
         })
       }
     }
@@ -385,11 +385,7 @@ export function mapAssignmentRecipientSummaries(recipients = []) {
   }, {})
 
   Object.values(summaries).forEach((summary) => {
-    summary.pendingStudents.sort((left, right) => {
-      const leftSeat = Number.isFinite(left.seatNumber) ? left.seatNumber : Number.MAX_SAFE_INTEGER
-      const rightSeat = Number.isFinite(right.seatNumber) ? right.seatNumber : Number.MAX_SAFE_INTEGER
-      return leftSeat - rightSeat || left.fullName.localeCompare(right.fullName, 'zh-TW')
-    })
+    summary.pendingStudents.sort((left, right) => left.seatNumber - right.seatNumber)
   })
 
   return summaries

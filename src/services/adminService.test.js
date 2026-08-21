@@ -155,7 +155,7 @@ describe('教師核准服務', () => {
 })
 
 describe('作業發布服務', () => {
-  it('整理每項作業的未繳交人數與學生名單，並依座號排序', () => {
+  it('整理每項作業的未繳交人數與座號，並依座號排序', () => {
     expect(mapAssignmentRecipientSummaries([
       { assignment_id: 'assignment-1', student_id: 'student-3', submitted_at: null, students: { seat_number: 3, full_name: '王小華' } },
       { assignment_id: 'assignment-1', student_id: 'student-1', submitted_at: null, students: { seat_number: 1, full_name: '李小明' } },
@@ -166,8 +166,8 @@ describe('作業發布服務', () => {
         recipientCount: 3,
         pendingRecipientCount: 2,
         pendingStudents: [
-          { id: 'student-1', seatNumber: 1, fullName: '李小明' },
-          { id: 'student-3', seatNumber: 3, fullName: '王小華' },
+          { id: 'student-1', seatNumber: 1 },
+          { id: 'student-3', seatNumber: 3 },
         ],
       },
       'assignment-2': {

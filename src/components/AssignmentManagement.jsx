@@ -452,7 +452,7 @@ export default function AssignmentManagement({
                 <>
                   <strong><UserRoundCheck aria-hidden="true" />未繳交 {item.pendingRecipientCount} 人</strong>
                   <div className="assignment-pending-students">
-                    {item.pendingStudents.map((student) => <span key={student.id}>{student.seatNumber} 號・{student.fullName}</span>)}
+                    <span>{item.pendingStudents.map((student) => student.seatNumber).join('、')} 號</span>
                   </div>
                 </>
               ) : (
