@@ -5,6 +5,7 @@ import {
   createClientId,
   mapAnnouncementRow,
   markAnnouncementRead,
+  updateAnnouncement,
   validateAnnouncementInput,
 } from './announcementService.js'
 
@@ -55,6 +56,13 @@ describe('公告資料驗證', () => {
     })).toThrow('公告圖片不可超過 5 MB。')
   })
 
+  it('編輯既有公告時，可保留原本已到期的時間', () => {
+    expect(validateAnnouncementInput({
+      scope: 'class', title: '舊公告修正', content: '修正內容', expiresAt: '2020-01-01T08:00',
+      imageFile: null, allowPastExpiry: true,
+    })).toEqual({ title: '舊公告修正', content: '修正內容' })
+  })
+
   it('保留公告範圍、圖片與到期資料', () => {
     expect(mapAnnouncementRow({
       id: 'announcement-id', class_id: 'class-id', scope: 'school', title: '校慶',
@@ -74,6 +82,50 @@ describe('公告資料驗證', () => {
       imageUrl: null,
       imageError: '圖片讀取失敗',
     })
+  })
+})
+
+describe('公告編輯', () => {
+  beforeEach(() => {
+    requireSupabase.mockReset()
+  })
+
+  it('更新原公告並保留既有圖片與公告編號', async () => {
+    const single = vi.fn().mockResolvedValue({ data: { id: 'announcement-id' }, error: null })
+    const secondEq = vi.fn(() => ({ select: vi.fn(() => ({ single })) }))
+    const firstEq = vi.fn(() => ({ eq: secondEq }))
+    const update = vi.fn(() => ({ eq: firstEq }))
+    const remove = vi.fn().mockResolvedValue({ error: null })
+    requireSupabase.mockReturnValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-id' } }, error: null }) },
+      from: vi.fn(() => ({ update })),
+      storage: { from: vi.fn(() => ({ remove })) },
+    })
+
+    await updateAnnouncement({
+      announcementId: 'announcement-id',
+      classId: 'class-id',
+      scope: 'school',
+      title: '  校慶通知修正  ',
+      content: '  集合時間改為八點。  ',
+      expiresAt: '2099-08-30T12:00',
+      imageFile: null,
+      imageAltText: '校慶通知單',
+      existingImagePath: 'class-id/announcement-id/photo.png',
+      previousExpiresAt: '2099-08-29T12:00:00.000Z',
+    })
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      scope: 'school',
+      title: '校慶通知修正',
+      content: '集合時間改為八點。',
+      image_path: 'class-id/announcement-id/photo.png',
+      image_alt_text: '校慶通知單',
+      published_by: 'admin-id',
+    }))
+    expect(firstEq).toHaveBeenCalledWith('id', 'announcement-id')
+    expect(secondEq).toHaveBeenCalledWith('class_id', 'class-id')
+    expect(remove).not.toHaveBeenCalled()
   })
 })
 

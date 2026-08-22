@@ -6,14 +6,19 @@ import {
   EyeOff,
   ImagePlus,
   Megaphone,
+  Pencil,
   RefreshCw,
+  Save,
   Send,
+  Trash2,
   Users,
+  X,
 } from 'lucide-react'
 import {
   createAnnouncement,
   deactivateAnnouncement,
   loadAdminAnnouncements,
+  updateAnnouncement,
 } from '../services/announcementService.js'
 
 function formatDateTime(value) {
@@ -21,6 +26,14 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat('zh-TW', {
     month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(new Date(value))
+}
+
+function toDateTimeLocal(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return ''
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000)
+  return localDate.toISOString().slice(0, 16)
 }
 
 const emptyForm = {
@@ -38,7 +51,10 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deactivatingId, setDeactivatingId] = useState('')
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null)
+  const [removeExistingImage, setRemoveExistingImage] = useState(false)
   const fileInputRef = useRef(null)
+  const formPanelRef = useRef(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -53,16 +69,51 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
 
   useEffect(() => { load() }, [load])
 
+  function resetForm() {
+    setEditingAnnouncement(null)
+    setRemoveExistingImage(false)
+    setForm(emptyForm)
+    setImageFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function startEditing(item) {
+    setEditingAnnouncement(item)
+    setRemoveExistingImage(false)
+    setImageFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setForm({
+      scope: item.scope,
+      title: item.title,
+      content: item.content,
+      expiresAt: toDateTimeLocal(item.expiresAt),
+      imageAltText: item.imageAltText || item.title,
+    })
+    formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   async function submit(event) {
     event.preventDefault()
     setSaving(true)
     try {
-      await createAnnouncement({ classId: dashboard.classInfo.id, ...form, imageFile })
-      setForm(emptyForm)
-      setImageFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (editingAnnouncement) {
+        await updateAnnouncement({
+          announcementId: editingAnnouncement.id,
+          classId: dashboard.classInfo.id,
+          ...form,
+          imageFile,
+          existingImagePath: editingAnnouncement.imagePath,
+          previousExpiresAt: editingAnnouncement.expiresAt,
+          removeImage: removeExistingImage,
+        })
+      } else {
+        await createAnnouncement({ classId: dashboard.classInfo.id, ...form, imageFile })
+      }
+      const noticeTitle = form.title.trim()
+      const wasEditing = Boolean(editingAnnouncement)
+      resetForm()
       await load()
-      onNotice('success', `公告「${form.title.trim()}」已發布。`)
+      onNotice('success', `公告「${noticeTitle}」已${wasEditing ? '更新' : '發布'}。`)
     } catch (error) {
       onNotice('error', error.message)
     } finally {
@@ -75,6 +126,7 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
     setDeactivatingId(item.id)
     try {
       await deactivateAnnouncement(item.id)
+      if (editingAnnouncement?.id === item.id) resetForm()
       await load()
       onNotice('success', `公告「${item.title}」已下架。`)
     } catch (error) {
@@ -95,10 +147,10 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
       </div>
 
       <div className="announcement-layout-grid">
-        <form className="announcement-create-panel" onSubmit={submit}>
+        <form ref={formPanelRef} className={`announcement-create-panel${editingAnnouncement ? ' is-editing' : ''}`} onSubmit={submit}>
           <div className="student-panel-title">
             <span><Megaphone aria-hidden="true" /></span>
-            <div><h3>建立公告</h3><p>標題與公告類型為必填。</p></div>
+            <div><h3>{editingAnnouncement ? '編輯公告' : '建立公告'}</h3><p>{editingAnnouncement ? '修改後會更新原公告，已讀紀錄會保留。' : '標題與公告類型為必填。'}</p></div>
           </div>
 
           <label><span>公告類型</span><select value={form.scope} onChange={(event) => setForm({ ...form, scope: event.target.value })}><option value="class">班級公告</option><option value="school">全校公告</option></select></label>
@@ -108,12 +160,26 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
 
           <label className="announcement-image-field">
             <span><ImagePlus aria-hidden="true" />公告圖片（選填）</span>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setImageFile(event.target.files?.[0] || null)} />
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setImageFile(event.target.files?.[0] || null); setRemoveExistingImage(false) }} />
             <small>接受 JPG、PNG、WebP，檔案上限 5 MB。</small>
           </label>
-          {imageFile && <label><span>圖片說明（選填）</span><input maxLength="100" value={form.imageAltText} placeholder="例如：校外教學通知單" onChange={(event) => setForm({ ...form, imageAltText: event.target.value })} /></label>}
+          {editingAnnouncement?.imagePath && !imageFile && (
+            <div className={`announcement-existing-image${removeExistingImage ? ' is-removing' : ''}`}>
+              {editingAnnouncement.imageUrl && !removeExistingImage && <img src={editingAnnouncement.imageUrl} alt={editingAnnouncement.imageAltText} />}
+              <div>
+                <strong>{removeExistingImage ? '儲存後將移除原圖片' : '目前公告圖片'}</strong>
+                <button type="button" onClick={() => setRemoveExistingImage((value) => !value)}>
+                  {removeExistingImage ? <><X />取消移除</> : <><Trash2 />移除圖片</>}
+                </button>
+              </div>
+            </div>
+          )}
+          {(imageFile || (editingAnnouncement?.imagePath && !removeExistingImage)) && <label><span>圖片說明（選填）</span><input maxLength="100" value={form.imageAltText} placeholder="例如：校外教學通知單" onChange={(event) => setForm({ ...form, imageAltText: event.target.value })} /></label>}
 
-          <button className="approve-button" type="submit" disabled={saving || !form.title.trim()}><Send aria-hidden="true" />{saving ? '發布中…' : '發布公告'}</button>
+          <div className="announcement-form-actions">
+            <button className="approve-button" type="submit" disabled={saving || !form.title.trim()}>{editingAnnouncement ? <Save aria-hidden="true" /> : <Send aria-hidden="true" />}{saving ? '儲存中…' : editingAnnouncement ? '儲存修改' : '發布公告'}</button>
+            {editingAnnouncement && <button className="announcement-edit-cancel" type="button" disabled={saving} onClick={resetForm}><X aria-hidden="true" />取消編輯</button>}
+          </div>
         </form>
 
         <section className="announcement-list-panel">
@@ -143,7 +209,10 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
                     <div><strong>已讀</strong><p>{item.readStudents.length ? item.readStudents.map((student) => `${student.seatNumber} 號 ${student.fullName}`).join('、') : '尚無學生已讀'}</p></div>
                     <div><strong>未讀</strong><p>{item.unreadStudents.length ? item.unreadStudents.map((student) => `${student.seatNumber} 號 ${student.fullName}`).join('、') : '全班皆已讀'}</p></div>
                   </details>
-                  {item.isActive && <button className="announcement-deactivate-button" type="button" disabled={deactivatingId === item.id} onClick={() => deactivate(item)}><EyeOff />{deactivatingId === item.id ? '下架中…' : '下架公告'}</button>}
+                  <div className="announcement-admin-actions">
+                    <button className="announcement-edit-button" type="button" disabled={saving} onClick={() => startEditing(item)}><Pencil />編輯公告</button>
+                    {item.isActive && <button className="announcement-deactivate-button" type="button" disabled={deactivatingId === item.id} onClick={() => deactivate(item)}><EyeOff />{deactivatingId === item.id ? '下架中…' : '下架公告'}</button>}
+                  </div>
                 </div>
               </article>
             ))}
