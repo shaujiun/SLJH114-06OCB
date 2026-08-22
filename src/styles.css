@@ -3805,6 +3805,11 @@ footer {
   gap: 14px;
 }
 
+.announcement-create-panel.is-editing {
+  border-color: #6450a4;
+  box-shadow: 6px 7px 0 #6450a4;
+}
+
 .announcement-create-panel > label {
   display: grid;
   gap: 6px;
@@ -3857,8 +3862,79 @@ footer {
   line-height: 1.5;
 }
 
-.announcement-create-panel > .approve-button {
-  width: 100%;
+.announcement-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.announcement-form-actions .approve-button {
+  flex: 1 1 180px;
+}
+
+.announcement-edit-cancel,
+.announcement-existing-image button,
+.announcement-edit-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.announcement-edit-cancel {
+  color: #55448b;
+  background: #f7f2ff;
+  border: 1px solid #aa9bd5;
+}
+
+.announcement-existing-image {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  background: #f7f2ff;
+  border: 1px solid #c9bee5;
+  border-radius: 12px;
+}
+
+.announcement-existing-image.is-removing {
+  background: #fff4f0;
+  border-color: #dba291;
+}
+
+.announcement-existing-image > img {
+  width: 86px;
+  height: 64px;
+  object-fit: contain;
+  background: white;
+  border: 1px solid #ddd5e8;
+  border-radius: 8px;
+}
+
+.announcement-existing-image > div {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.announcement-existing-image button {
+  width: fit-content;
+  min-height: 36px;
+  color: #854c40;
+  background: white;
+  border: 1px solid #dba291;
+}
+
+.announcement-existing-image svg,
+.announcement-edit-cancel svg,
+.announcement-edit-button svg {
+  width: 17px;
 }
 
 .announcement-list-panel {
@@ -4042,6 +4118,19 @@ footer {
   border-radius: 9px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.announcement-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.announcement-edit-button {
+  width: fit-content;
+  color: #51409e;
+  background: #f0ebff;
+  border: 1px solid #aa9bd5;
 }
 
 .student-announcements-panel {

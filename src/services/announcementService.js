@@ -52,13 +52,17 @@ export function createClientId(cryptoApi = globalThis.crypto) {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`
 }
 
-export function validateAnnouncementInput({ scope, title, content, expiresAt, imageFile }) {
+export function validateAnnouncementInput({ scope, title, content, expiresAt, imageFile, allowPastExpiry = false }) {
   const normalizedTitle = normalizeText(title)
   const normalizedContent = normalizeText(content)
   if (!['school', 'class'].includes(scope)) throw new Error('請選擇公告類型。')
   if (!normalizedTitle || normalizedTitle.length > 80) throw new Error('公告標題必須為 1 至 80 個字。')
   if (normalizedContent.length > 2000) throw new Error('公告內容不可超過 2000 個字。')
-  if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) throw new Error('公告到期時間必須晚於現在。')
+  if (expiresAt) {
+    const expiresTime = new Date(expiresAt).getTime()
+    if (!Number.isFinite(expiresTime)) throw new Error('公告到期時間格式不正確。')
+    if (!allowPastExpiry && expiresTime <= Date.now()) throw new Error('公告到期時間必須晚於現在。')
+  }
   if (imageFile) {
     if (!ALLOWED_IMAGE_TYPES.has(imageFile.type)) throw new Error('公告圖片只接受 JPG、PNG 或 WebP。')
     if (imageFile.size > MAX_IMAGE_SIZE) throw new Error('公告圖片不可超過 5 MB。')
@@ -134,6 +138,74 @@ export async function createAnnouncement({
   if (error) {
     if (imagePath) await client.storage.from(ANNOUNCEMENT_BUCKET).remove([imagePath])
     throw new Error('公告發布失敗，請稍後再試。')
+  }
+  return data
+}
+
+export async function updateAnnouncement({
+  announcementId,
+  classId,
+  scope,
+  title,
+  content,
+  expiresAt,
+  imageFile,
+  imageAltText,
+  existingImagePath,
+  previousExpiresAt,
+  removeImage = false,
+}) {
+  const nextExpiryTime = expiresAt ? new Date(expiresAt).getTime() : null
+  const previousExpiryTime = previousExpiresAt ? new Date(previousExpiresAt).getTime() : null
+  const allowPastExpiry = Number.isFinite(nextExpiryTime)
+    && Number.isFinite(previousExpiryTime)
+    && nextExpiryTime === previousExpiryTime
+  const validated = validateAnnouncementInput({
+    scope,
+    title,
+    content,
+    expiresAt,
+    imageFile,
+    allowPastExpiry,
+  })
+  const client = requireSupabase()
+  const { data: userData, error: userError } = await client.auth.getUser()
+  if (userError || !userData.user) throw new Error('登入狀態已失效，請重新登入。')
+
+  let nextImagePath = removeImage ? null : existingImagePath || null
+  let uploadedImagePath = null
+  if (imageFile) {
+    uploadedImagePath = `${classId}/${announcementId}/${createClientId()}.${extensionFor(imageFile)}`
+    const { error: uploadError } = await client.storage
+      .from(ANNOUNCEMENT_BUCKET)
+      .upload(uploadedImagePath, imageFile, { contentType: imageFile.type, upsert: false })
+    if (uploadError) throw new Error(announcementUploadErrorMessage(uploadError))
+    nextImagePath = uploadedImagePath
+  }
+
+  const { data, error } = await client
+    .from('announcements')
+    .update({
+      scope,
+      title: validated.title,
+      content: validated.content || null,
+      image_path: nextImagePath,
+      image_alt_text: nextImagePath ? normalizeText(imageAltText) || validated.title : null,
+      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+      published_by: userData.user.id,
+    })
+    .eq('id', announcementId)
+    .eq('class_id', classId)
+    .select('id')
+    .single()
+
+  if (error) {
+    if (uploadedImagePath) await client.storage.from(ANNOUNCEMENT_BUCKET).remove([uploadedImagePath])
+    throw new Error('公告更新失敗，請稍後再試。')
+  }
+
+  if (existingImagePath && existingImagePath !== nextImagePath) {
+    await client.storage.from(ANNOUNCEMENT_BUCKET).remove([existingImagePath])
   }
   return data
 }
