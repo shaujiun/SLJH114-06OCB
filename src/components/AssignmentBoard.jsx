@@ -39,7 +39,7 @@ function AssignmentGroupColumn({
   quizReminders,
   quizReminderLoading,
   quizReminderError,
-  showOutstandingSeats,
+  quizReminderTitle,
   loading,
   error,
 }) {
@@ -56,7 +56,7 @@ function AssignmentGroupColumn({
           reminders={quizReminders}
           loading={quizReminderLoading}
           error={quizReminderError}
-          title={showOutstandingSeats ? '成績填寫項目' : '今日成績提醒'}
+          title={quizReminderTitle}
         />
 
         {error && <div className="assignment-board-warning"><strong>{error}</strong></div>}
@@ -69,7 +69,7 @@ function AssignmentGroupColumn({
                 <span>{assignment.subject?.name || '未設定科目'}</span>
                 <div className="assignment-board-item-copy">
                   <strong>{assignment.content}</strong>
-                  {showOutstandingSeats && assignment.outstandingSeatNumbers?.length > 0 && <small>例外名單：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
+                  {assignment.outstandingSeatNumbers?.length > 0 && <small>缺交名單：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
                 </div>
               </li>
             ))}
@@ -150,7 +150,7 @@ export default function AssignmentBoard({
           quizReminders={reminderGroups.A}
           quizReminderLoading={quizReminderLoading}
           quizReminderError={quizReminderError}
-          showOutstandingSeats={isPreviousDay}
+          quizReminderTitle={isPreviousDay ? '成績填寫項目' : '今日成績提醒'}
           loading={loading}
           error={error}
         />
@@ -160,7 +160,7 @@ export default function AssignmentBoard({
           quizReminders={reminderGroups.B}
           quizReminderLoading={quizReminderLoading}
           quizReminderError={quizReminderError}
-          showOutstandingSeats={isPreviousDay}
+          quizReminderTitle={isPreviousDay ? '成績填寫項目' : '今日成績提醒'}
           loading={loading}
           error={error}
         />
