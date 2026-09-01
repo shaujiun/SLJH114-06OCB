@@ -24,14 +24,20 @@ export function filterCurrentAssignmentBoardItems(assignments = [], now = new Da
     .slice(0, 10)
 
   return (Array.isArray(assignments) ? assignments : []).filter((assignment) => {
-    const publishedAt = assignment?.publishedAt ? new Date(assignment.publishedAt) : null
-    const publishedDate = publishedAt && Number.isFinite(publishedAt.getTime())
-      ? new Date(publishedAt.getTime() - publishedAt.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
-      : assignment?.assignmentDate
-    if (!publishedDate || publishedDate > localToday) return false
-    if (assignment.isFullySubmitted) return false
+    const assignmentDate = assignment?.assignmentDate
+    if (!assignmentDate || assignmentDate > localToday) return false
+    if (assignmentDate === localToday) return true
+
+    const hasOutstandingStudents = assignment.outstandingSeatNumbers?.length > 0
     const dueTime = new Date(assignment.dueAt).getTime()
-    return Number.isFinite(dueTime) && dueTime >= currentTime
+    const isOpenAndNotFullySubmitted = Number.isFinite(dueTime)
+      && dueTime >= currentTime
+      && !assignment.isFullySubmitted
+    const isOverdueWithOutstandingStudents = Number.isFinite(dueTime)
+      && dueTime < currentTime
+      && hasOutstandingStudents
+
+    return isOpenAndNotFullySubmitted || isOverdueWithOutstandingStudents
   })
 }
 
@@ -71,19 +77,11 @@ export function previousSchoolDateString(now = new Date(), holidayEvents = []) {
 export function filterPreviousDayAssignmentBoardItems(
   assignments = [],
   referenceDate = previousLocalDateString(),
-  now = new Date(),
 ) {
-  const referenceEndTime = new Date(`${referenceDate}T23:59:59.999`).getTime()
-
   return (Array.isArray(assignments) ? assignments : []).filter((assignment) => {
-    const publishedDate = assignment?.publishedAt
-      ? localDateValue(assignment.publishedAt)
-      : assignment?.assignmentDate
-    if (!publishedDate || publishedDate > referenceDate) return false
-    if (assignment.isFullySubmitted) return false
-    if (publishedDate === referenceDate) return true
-
-    const dueTime = new Date(assignment?.dueAt).getTime()
-    return Number.isFinite(dueTime) && dueTime > referenceEndTime
+    const assignmentDate = assignment?.assignmentDate
+    if (!assignmentDate || assignmentDate > referenceDate) return false
+    if (assignmentDate === referenceDate) return true
+    return assignment.outstandingSeatNumbers?.length > 0
   })
 }

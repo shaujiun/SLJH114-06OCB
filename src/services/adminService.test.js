@@ -7,7 +7,7 @@ import {
   createStudentPasswordReset,
   createStudent,
   filterAssignmentsByDate,
-  getAssignmentPublishedDate,
+  getAssignmentDate,
   getOutstandingAssignmentDates,
   isFollowUpOverdue,
   loadAssignmentRecipientRows,
@@ -213,7 +213,7 @@ describe('作業發布服務', () => {
     expect(ranges).toEqual([[0, 999], [1000, 1999]])
   })
 
-  it('前一日聯絡簿只列出仍在例外名單且非免繳學生的座號', () => {
+  it('作業看板把所有待處理原因合併為缺交名單，排除免繳、已結案與已繳交者', () => {
     const seats = mapOutstandingAssignmentSeats({
       recipients: [
         { assignment_id: 'assignment-1', student_id: 'student-3', submitted_at: null, students: { seat_number: 3 } },
@@ -221,18 +221,24 @@ describe('作業發布服務', () => {
         { assignment_id: 'assignment-1', student_id: 'student-2', submitted_at: '2026-08-14T08:00:00+08:00', students: { seat_number: 2 } },
         { assignment_id: 'assignment-1', student_id: 'student-4', submitted_at: null, students: { seat_number: 4 } },
         { assignment_id: 'assignment-2', student_id: 'student-8', submitted_at: null, students: { seat_number: 8 } },
+        { assignment_id: 'assignment-2', student_id: 'student-9', submitted_at: null, students: { seat_number: 9 } },
+        { assignment_id: 'assignment-2', student_id: 'student-10', submitted_at: null, students: { seat_number: 10 } },
+        { assignment_id: 'assignment-2', student_id: 'student-11', submitted_at: null, students: { seat_number: 11 } },
       ],
       exceptions: [
         { assignment_id: 'assignment-1', student_id: 'student-1', current_reason: 'incomplete', workflow_state: 'open' },
         { assignment_id: 'assignment-1', student_id: 'student-3', current_reason: 'not_brought', workflow_state: 'open' },
         { assignment_id: 'assignment-1', student_id: 'student-4', current_reason: 'exempt', workflow_state: 'open' },
         { assignment_id: 'assignment-2', student_id: 'student-8', current_reason: 'leave', workflow_state: 'open' },
+        { assignment_id: 'assignment-2', student_id: 'student-9', current_reason: 'official_leave', workflow_state: 'open' },
+        { assignment_id: 'assignment-2', student_id: 'student-10', current_reason: 'retest_required', workflow_state: 'open' },
+        { assignment_id: 'assignment-2', student_id: 'student-11', current_reason: 'late', workflow_state: 'made_up' },
       ],
     })
 
     expect(seats).toEqual({
       'assignment-1': [1, 3],
-      'assignment-2': [8],
+      'assignment-2': [8, 9, 10],
     })
   })
 
@@ -256,7 +262,7 @@ describe('作業發布服務', () => {
     expect(sorted.map((item) => item.id)).toEqual(['common-new', 'common-old', 'a-new', 'b-new'])
   })
 
-  it('日期選單依實際發布日，只保留仍有學生未繳交的日期', () => {
+  it('日期選單依作業日期，只保留仍有學生未繳交的日期', () => {
     const assignments = [
       { id: 'complete-only', assignmentDate: '2026-08-13', publishedAt: '2026-08-10T09:00:00+08:00', isFullySubmitted: true },
       { id: 'complete-same-day', assignmentDate: '2026-08-13', publishedAt: '2026-08-11T09:00:00+08:00', isFullySubmitted: true },
@@ -264,22 +270,27 @@ describe('作業發布服務', () => {
       { id: 'pending-newer', assignmentDate: '2026-08-15', publishedAt: '2026-08-12T09:00:00+08:00', isFullySubmitted: false },
     ]
 
-    expect(getOutstandingAssignmentDates(assignments)).toEqual(['2026-08-12', '2026-08-11'])
+    expect(getOutstandingAssignmentDates(assignments)).toEqual(['2026-08-15', '2026-08-14'])
   })
 
-  it('選定發布日後會顯示當天發布的全部作業', () => {
+  it('選定作業日期後會顯示該日的全部作業', () => {
     const assignments = [
       { id: 'complete-same-day', assignmentDate: '2026-08-13', publishedAt: '2026-08-11T09:00:00+08:00', isFullySubmitted: true },
       { id: 'pending-same-day', assignmentDate: '2026-08-14', publishedAt: '2026-08-11T10:00:00+08:00', isFullySubmitted: false },
       { id: 'other-day', assignmentDate: '2026-08-12', publishedAt: '2026-08-12T09:00:00+08:00', isFullySubmitted: false },
     ]
 
-    expect(filterAssignmentsByDate(assignments, '2026-08-11').map((item) => item.id))
-      .toEqual(['complete-same-day', 'pending-same-day'])
+    expect(filterAssignmentsByDate(assignments, '2026-08-13').map((item) => item.id))
+      .toEqual(['complete-same-day'])
+    expect(filterAssignmentsByDate(assignments, '2026-08-14').map((item) => item.id))
+      .toEqual(['pending-same-day'])
   })
 
-  it('沒有發布時間的舊資料會安全沿用作業日期', () => {
-    expect(getAssignmentPublishedDate({ assignmentDate: '2026-08-10' })).toBe('2026-08-10')
+  it('作業分類日期固定採用老師選擇的作業日期', () => {
+    expect(getAssignmentDate({
+      assignmentDate: '2026-08-10',
+      publishedAt: '2026-08-12T09:00:00+08:00',
+    })).toBe('2026-08-10')
   })
 
   it('共同作業不傳分組代碼', async () => {

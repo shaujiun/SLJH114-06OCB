@@ -475,36 +475,32 @@ export async function loadOutstandingAssignmentSeats({ assignmentIds = [] }) {
   const recipients = requireData(
     recipientsResult.data,
     recipientsResult.error,
-    '無法讀取前一日作業的學生名單。',
+    '無法讀取作業的學生名單。',
   )
   const exceptions = requireData(
     exceptionsResult.data,
     exceptionsResult.error,
-    '無法讀取前一日作業的免繳紀錄。',
+    '無法讀取作業的缺交紀錄。',
   )
   return mapOutstandingAssignmentSeats({ recipients, exceptions })
 }
 
-export function getAssignmentPublishedDate(assignment) {
-  if (!assignment?.publishedAt) return assignment?.assignmentDate || ''
-  const date = new Date(assignment.publishedAt)
-  if (Number.isNaN(date.getTime())) return assignment.assignmentDate || ''
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 10)
+export function getAssignmentDate(assignment) {
+  return assignment?.assignmentDate || ''
 }
 
 export function getOutstandingAssignmentDates(assignments) {
   const dates = new Set(
     (assignments || [])
-      .filter((assignment) => !assignment.isFullySubmitted && getAssignmentPublishedDate(assignment))
-      .map(getAssignmentPublishedDate),
+      .filter((assignment) => !assignment.isFullySubmitted && getAssignmentDate(assignment))
+      .map(getAssignmentDate),
   )
   return [...dates].sort((left, right) => right.localeCompare(left))
 }
 
 export function filterAssignmentsByDate(assignments, assignmentDate) {
   if (!assignmentDate) return []
-  return (assignments || []).filter((assignment) => getAssignmentPublishedDate(assignment) === assignmentDate)
+  return (assignments || []).filter((assignment) => getAssignmentDate(assignment) === assignmentDate)
 }
 
 export function sortAssignmentsByTarget(assignments) {

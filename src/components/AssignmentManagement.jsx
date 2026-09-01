@@ -106,6 +106,9 @@ export default function AssignmentManagement({
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
+  const [boardAssignments, setBoardAssignments] = useState([])
+  const [boardLoading, setBoardLoading] = useState(false)
+  const [boardError, setBoardError] = useState('')
   const [showPreviousDayBoard, setShowPreviousDayBoard] = useState(false)
   const [previousDayAssignments, setPreviousDayAssignments] = useState([])
   const [previousDayReferenceDate, setPreviousDayReferenceDate] = useState('')
@@ -269,21 +272,49 @@ export default function AssignmentManagement({
 
   async function openAssignmentBoard() {
     setShowAssignmentBoard(true)
+    const currentDate = localDateString()
+    const candidates = assignments.filter((assignment) => (
+      assignment.assignmentDate === currentDate
+      || (assignment.assignmentDate < currentDate && !assignment.isFullySubmitted)
+    ))
+    setBoardAssignments(candidates.map((assignment) => ({
+      ...assignment,
+      outstandingSeatNumbers: [],
+    })))
+    setBoardError('')
+    setBoardLoading(true)
     setBoardQuizReminders([])
     setBoardQuizReminderError('')
     setBoardQuizReminderLoading(true)
-    try {
-      const rows = await loadDailyQuizReminderSettings({
+
+    const [seatsResult, remindersResult] = await Promise.allSettled([
+      loadOutstandingAssignmentSeats({
+        assignmentIds: candidates.map((assignment) => assignment.id),
+      }),
+      loadDailyQuizReminderSettings({
         classId: dashboard.classInfo.id,
         academicTermId: termId,
         reminderDate: localDateString(),
-      })
-      setBoardQuizReminders(rows)
-    } catch (error) {
-      setBoardQuizReminderError(error.message)
-    } finally {
-      setBoardQuizReminderLoading(false)
+      }),
+    ])
+
+    if (seatsResult.status === 'fulfilled') {
+      const seatsByAssignment = seatsResult.value
+      setBoardAssignments(candidates.map((assignment) => ({
+        ...assignment,
+        outstandingSeatNumbers: seatsByAssignment[assignment.id] || [],
+      })))
+    } else {
+      setBoardError(`${seatsResult.reason.message} 作業內容仍會正常顯示。`)
     }
+    setBoardLoading(false)
+
+    if (remindersResult.status === 'fulfilled') {
+      setBoardQuizReminders(remindersResult.value)
+    } else {
+      setBoardQuizReminderError(remindersResult.reason.message)
+    }
+    setBoardQuizReminderLoading(false)
   }
 
   function startEditingAssignment(assignment) {
@@ -342,7 +373,10 @@ export default function AssignmentManagement({
   async function openPreviousDayBoard() {
     let referenceDate = previousSchoolDateString()
     let warningMessage = ''
-    const initialCandidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+    const initialCandidates = assignments.filter((assignment) => (
+      assignment.assignmentDate === referenceDate
+      || (assignment.assignmentDate < referenceDate && !assignment.isFullySubmitted)
+    ))
     setShowPreviousDayBoard(true)
     setPreviousDayReferenceDate(referenceDate)
     setPreviousDayAssignments(initialCandidates.map((assignment) => ({
@@ -364,7 +398,10 @@ export default function AssignmentManagement({
       warningMessage = `${error.message} 已先依週末規則顯示作業。`
     }
 
-    const candidates = filterPreviousDayAssignmentBoardItems(assignments, referenceDate)
+    const candidates = assignments.filter((assignment) => (
+      assignment.assignmentDate === referenceDate
+      || (assignment.assignmentDate < referenceDate && !assignment.isFullySubmitted)
+    ))
     setPreviousDayReferenceDate(referenceDate)
     setPreviousDayAssignments(candidates.map((assignment) => ({
       ...assignment,
@@ -386,10 +423,11 @@ export default function AssignmentManagement({
 
     if (seatsResult.status === 'fulfilled') {
       const seatsByAssignment = seatsResult.value
-      setPreviousDayAssignments(candidates.map((assignment) => ({
+      const candidatesWithSeats = candidates.map((assignment) => ({
         ...assignment,
         outstandingSeatNumbers: seatsByAssignment[assignment.id] || [],
-      })))
+      }))
+      setPreviousDayAssignments(filterPreviousDayAssignmentBoardItems(candidatesWithSeats, referenceDate))
     } else {
       setPreviousDayBoardError([
         warningMessage,
@@ -438,7 +476,7 @@ export default function AssignmentManagement({
           <div className="student-list-heading"><div><span><BookOpenCheck aria-hidden="true" /></span><div><h3>已發布作業</h3><p>{filterByOutstandingDate ? selectedAssignmentDate ? `${formatAssignmentDate(selectedAssignmentDate)}・共 ${visibleAssignments.length} 筆` : '目前沒有待處理日期' : `共 ${assignments.length} 筆`}</p></div></div><button type="button" onClick={load}><RefreshCw aria-hidden="true" /></button></div>
           {loading && <div className="student-list-empty"><RefreshCw className="is-spinning" />讀取中…</div>}
           {!loading && !assignments.length && <div className="student-list-empty"><BookOpenCheck /><strong>尚未發布作業</strong><span>建立後會依共同或分組顯示。</span></div>}
-          {!loading && filterByOutstandingDate && Boolean(assignments.length) && Boolean(outstandingAssignmentDates.length) && <label className="assignment-date-picker"><span>選擇發布日期</span><select value={selectedAssignmentDate} onChange={(event) => { setSelectedAssignmentDate(event.target.value); setTrackingAssignmentId('') }}>{outstandingAssignmentDates.map((date) => <option value={date} key={date}>{formatAssignmentDate(date)}</option>)}</select><small>只保留仍有學生未繳交的發布日期</small></label>}
+          {!loading && filterByOutstandingDate && Boolean(assignments.length) && Boolean(outstandingAssignmentDates.length) && <label className="assignment-date-picker"><span>選擇作業日期</span><select value={selectedAssignmentDate} onChange={(event) => { setSelectedAssignmentDate(event.target.value); setTrackingAssignmentId('') }}>{outstandingAssignmentDates.map((date) => <option value={date} key={date}>{formatAssignmentDate(date)}</option>)}</select><small>依作業日期分類，只保留仍有學生未繳交的日期</small></label>}
           {!loading && filterByOutstandingDate && Boolean(assignments.length) && !outstandingAssignmentDates.length && <div className="student-list-empty"><CheckCheck /><strong>目前所有作業皆已繳交</strong><span>有未繳交作業的日期才會出現在選單。</span></div>}
           <div className="assignment-items">{visibleAssignments.map((item) => <article key={item.id}>
             <div className="assignment-item-summary">
@@ -490,10 +528,12 @@ export default function AssignmentManagement({
         </section>
       </div>
       {showAssignmentBoard && <AssignmentBoard
-        assignments={assignments}
+        assignments={boardAssignments}
         quizReminders={boardQuizReminders}
         quizReminderLoading={boardQuizReminderLoading}
         quizReminderError={boardQuizReminderError}
+        loading={boardLoading}
+        error={boardError}
         onClose={() => setShowAssignmentBoard(false)}
       />}
       {showPreviousDayBoard && <AssignmentBoard
