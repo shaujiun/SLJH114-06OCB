@@ -69,6 +69,7 @@ function AssignmentGroupColumn({
                 <span>{assignment.subject?.name || '未設定科目'}</span>
                 <div className="assignment-board-item-copy">
                   <strong>{assignment.content}</strong>
+                  {assignment.targetType === 'individual' && assignment.recipientStudents?.length > 0 && <small>個別指定：{assignment.recipientStudents.map((student) => student.seatNumber).join('、')} 號</small>}
                   {assignment.outstandingSeatNumbers?.length > 0 && <small>缺交名單：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
                 </div>
               </li>

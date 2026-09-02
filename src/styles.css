@@ -1196,6 +1196,7 @@ footer {
 }
 
 .student-target-badge.is-common { background: #eee7ff; }
+.student-target-badge.is-individual { background: #e6f1ff; }
 .student-target-badge.is-a { background: #dff7ef; }
 .student-target-badge.is-b { background: #fff1bf; }
 
@@ -2531,6 +2532,62 @@ footer {
 
 .assignment-targets button.is-active.is-a { background: #dff7ef; }
 .assignment-targets button.is-active.is-b { background: #fff1bf; }
+.assignment-targets button.is-active.is-individual { background: #e6f1ff; }
+
+.assignment-individual-picker {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1.5px solid #a9bddb;
+  border-radius: 12px;
+  background: #f5f9ff;
+}
+
+.assignment-individual-picker > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.assignment-individual-picker > header > div:first-child { display: grid; gap: 2px; }
+.assignment-individual-picker > header span,
+.assignment-individual-picker > small { color: #52647c; font-size: 8px; font-weight: 800; }
+.assignment-individual-picker > header > div:last-child { display: flex; gap: 5px; }
+.assignment-individual-picker button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #91a9c9;
+  border-radius: 8px;
+  color: #324f76;
+  background: white;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.assignment-individual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 6px;
+  max-height: 245px;
+  overflow: auto;
+}
+
+.assignment-individual-grid label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #c7d3e3;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+.assignment-individual-grid label.is-selected { border-color: #4b70a0; background: #dceaff; }
+.assignment-individual-grid input { width: 16px; min-height: 16px; flex: 0 0 auto; }
+.assignment-individual-grid span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
+.assignment-individual-grid strong { margin-right: 4px; }
 
 .assignment-items {
   display: grid;
@@ -2599,6 +2656,7 @@ footer {
 }
 
 .assignment-audience.is-common { background: #eee7ff; }
+.assignment-audience.is-individual { background: #e6f1ff; }
 .assignment-audience.is-a { background: #dff7ef; }
 .assignment-audience.is-b { background: #fff1bf; }
 
@@ -3038,6 +3096,20 @@ footer {
 .submission-student-list article.is-follow-up-overdue {
   background: #fff8f1;
   border-color: #d97852;
+}
+
+.submission-student-identity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.submission-student-identity strong { font-size: 9px; overflow-wrap: anywhere; }
+.submission-student-identity small { color: #6d6774; font-size: 7px; }
+.submission-locked-hint {
+  grid-column: 1 / -1;
+  color: #7c6130;
+  font-size: 8px;
+  font-weight: 800;
 }
 
 .submission-student-toggle {

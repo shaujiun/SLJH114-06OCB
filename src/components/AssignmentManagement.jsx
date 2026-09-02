@@ -4,6 +4,7 @@ import {
   cancelAssignment,
   filterAssignmentsByDate,
   getOutstandingAssignmentDates,
+  loadAssignmentAudienceStudents,
   loadAssignments,
   loadOutstandingAssignmentSeats,
   publishAssignment,
@@ -71,6 +72,43 @@ function firstTarget(subject) {
     : { targetType: 'group', targetGroupCode: first }
 }
 
+function IndividualAudiencePicker({ students, selectedIds, onChange, loading = false }) {
+  const selected = new Set(selectedIds || [])
+  const toggle = (studentId) => {
+    const next = new Set(selected)
+    if (next.has(studentId)) next.delete(studentId)
+    else next.add(studentId)
+    onChange([...next])
+  }
+
+  return (
+    <section className="assignment-individual-picker">
+      <header>
+        <div><strong>個別指定學生</strong><span>只有勾選的學生會收到這份作業。</span></div>
+        <div>
+          <button type="button" onClick={() => onChange(students.map((student) => student.id))}>全選</button>
+          <button type="button" onClick={() => onChange([])}>清除</button>
+        </div>
+      </header>
+      {loading ? <p>讀取學生名單中…</p> : (
+        <div className="assignment-individual-grid">
+          {students.map((student) => (
+            <label className={selected.has(student.id) ? 'is-selected' : ''} key={student.id}>
+              <input
+                type="checkbox"
+                checked={selected.has(student.id)}
+                onChange={() => toggle(student.id)}
+              />
+              <span><strong>{student.seatNumber} 號</strong>{student.fullName}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      <small>目前指定 {selected.size} 人</small>
+    </section>
+  )
+}
+
 export default function AssignmentManagement({
   dashboard,
   submissionStage = 'teacher',
@@ -90,8 +128,10 @@ export default function AssignmentManagement({
     classSubjectId: firstSubject?.id || '',
     assignmentDate: today,
     dueAt: nextDay(today),
-    content: '', ...firstTarget(firstSubject),
+    content: '', studentIds: [], ...firstTarget(firstSubject),
   })
+  const [audienceStudents, setAudienceStudents] = useState([])
+  const [audienceLoading, setAudienceLoading] = useState(true)
   const [assignments, setAssignments] = useState([])
   const [cancelledAssignments, setCancelledAssignments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -165,6 +205,7 @@ export default function AssignmentManagement({
         }
       }).filter((assignment) => {
         const subject = dashboard.classSubjects.find((item) => item.id === assignment.classSubjectId)
+        if (assignment.targetType === 'individual') return true
         const target = assignment.targetType === 'common' ? 'common' : assignment.targetGroupCode
         return allowedTargets(subject).includes(target)
       })))
@@ -177,6 +218,16 @@ export default function AssignmentManagement({
   }, [dashboard.classSubjects, isHelperMode, termId])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let active = true
+    setAudienceLoading(true)
+    loadAssignmentAudienceStudents({ classId: dashboard.classInfo.id })
+      .then((students) => { if (active) setAudienceStudents(students) })
+      .catch((error) => { if (active) setNotice({ type: 'error', message: error.message }) })
+      .finally(() => { if (active) setAudienceLoading(false) })
+    return () => { active = false }
+  }, [dashboard.classInfo.id])
 
   useEffect(() => {
     if (!filterByOutstandingDate) return
@@ -208,11 +259,15 @@ export default function AssignmentManagement({
       setNotice({ type: 'error', message: '繳交期限不得早於作業日期。' })
       return
     }
+    if (form.targetType === 'individual' && !form.studentIds.length) {
+      setNotice({ type: 'error', message: '請至少選擇一位個別作業學生。' })
+      return
+    }
     setSaving(true)
     setNotice(null)
     try {
       const result = await publishAssignment({ ...form, academicTermId: termId })
-      setForm((current) => ({ ...current, content: '' }))
+      setForm((current) => ({ ...current, content: '', studentIds: current.targetType === 'individual' ? [] : current.studentIds }))
       await load()
       setNotice({ type: 'success', message: `作業已發布給 ${result.recipientCount} 位學生。` })
     } catch (error) { setNotice({ type: 'error', message: error.message }) }
@@ -326,6 +381,7 @@ export default function AssignmentManagement({
       content: assignment.content,
       targetType: assignment.targetType,
       targetGroupCode: assignment.targetGroupCode || 'A',
+      studentIds: assignment.recipientStudents?.map((student) => student.id) || [],
     })
     setNotice(null)
   }
@@ -344,6 +400,10 @@ export default function AssignmentManagement({
     }
     if (!editForm.dueAt || new Date(editForm.dueAt) < new Date(`${editForm.assignmentDate}T00:00:00`)) {
       setNotice({ type: 'error', message: '繳交期限不得早於作業日期。' })
+      return
+    }
+    if (editForm.targetType === 'individual' && !editForm.studentIds.length) {
+      setNotice({ type: 'error', message: '請至少選擇一位個別作業學生。' })
       return
     }
 
@@ -446,7 +506,7 @@ export default function AssignmentManagement({
   return (
     <section className="assignment-management">
       <div className="student-page-heading">
-        <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '共同、A 組與 B 組作業會依發布當下的學生分組保存對象。'}</p></div>
+        <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '可發布共同、分組或個別學生作業；發布後會保存當時的作業對象。'}</p></div>
         {(allowAssignmentBoard || allowPreviousDayBoard || !hideTermPicker) && <div className="assignment-heading-actions">
           {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={openAssignmentBoard}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
           {allowPreviousDayBoard && <button className="assignment-board-launch is-previous-day" type="button" onClick={openPreviousDayBoard}><CalendarSearch aria-hidden="true" />前一日聯絡簿</button>}
@@ -465,22 +525,23 @@ export default function AssignmentManagement({
       <div className="assignment-layout-grid">
         <form className="assignment-create-panel" onSubmit={submit}>
           <div className="student-panel-title"><span><Plus aria-hidden="true" /></span><div><h3>發布新作業</h3><p>{isHelperMode ? '使用學生幹部權限，不會開放教師設定' : '不需要上傳照片或附件'}</p></div></div>
-          <label><span>科目</span><select required value={form.classSubjectId} onChange={(event) => { const subject = dashboard.classSubjects.find((item) => item.id === event.target.value); setForm({ ...form, classSubjectId: event.target.value, ...firstTarget(subject) }) }}>{dashboard.classSubjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></label>
+          <label><span>科目</span><select required value={form.classSubjectId} onChange={(event) => { const subject = dashboard.classSubjects.find((item) => item.id === event.target.value); setForm({ ...form, classSubjectId: event.target.value, studentIds: [], ...firstTarget(subject) }) }}>{dashboard.classSubjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></label>
           <div className="student-form-grid"><label><span>作業日期</span><input required type="date" value={form.assignmentDate} onChange={(event) => changeAssignmentDate(event.target.value)} /></label><label><span>繳交期限</span><input required type="datetime-local" min={form.assignmentDate ? `${form.assignmentDate}T00:00` : undefined} value={form.dueAt} onChange={(event) => setForm({ ...form, dueAt: event.target.value })} /></label></div>
           {selectedTerm && <p className="assignment-term-hint">此作業歸類至第 {selectedTerm.semester} 學期；日期可設定在學期間外或跨越學期。</p>}
           <label><span>作業內容</span><textarea required maxLength="1000" value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} placeholder="例如：完成習作第 12～13 頁" /></label>
-          <fieldset className="assignment-targets"><legend>適用對象</legend><div>{selectedAllowedTargets.includes('common') && <button className={form.targetType === 'common' ? 'is-active' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'common' })}>共同作業</button>}{selectedAllowedTargets.includes('A') && <button className={form.targetType === 'group' && form.targetGroupCode === 'A' ? 'is-active is-a' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'group', targetGroupCode: 'A' })}>A 組</button>}{selectedAllowedTargets.includes('B') && <button className={form.targetType === 'group' && form.targetGroupCode === 'B' ? 'is-active is-b' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'group', targetGroupCode: 'B' })}>B 組</button>}</div></fieldset>
+          <fieldset className="assignment-targets"><legend>適用對象</legend><div>{selectedAllowedTargets.includes('common') && <button className={form.targetType === 'common' ? 'is-active' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'common' })}>共同作業</button>}{selectedAllowedTargets.includes('A') && <button className={form.targetType === 'group' && form.targetGroupCode === 'A' ? 'is-active is-a' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'group', targetGroupCode: 'A' })}>A 組</button>}{selectedAllowedTargets.includes('B') && <button className={form.targetType === 'group' && form.targetGroupCode === 'B' ? 'is-active is-b' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'group', targetGroupCode: 'B' })}>B 組</button>}<button className={form.targetType === 'individual' ? 'is-active is-individual' : ''} type="button" onClick={() => setForm({ ...form, targetType: 'individual' })}>個別學生</button></div></fieldset>
+          {form.targetType === 'individual' && <IndividualAudiencePicker students={audienceStudents} selectedIds={form.studentIds} loading={audienceLoading} onChange={(studentIds) => setForm({ ...form, studentIds })} />}
           <button className="approve-button" type="submit" disabled={saving}><Send aria-hidden="true" />{saving ? '發布中…' : '發布作業'}</button>
         </form>
         <section className="assignment-list-panel">
           <div className="student-list-heading"><div><span><BookOpenCheck aria-hidden="true" /></span><div><h3>已發布作業</h3><p>{filterByOutstandingDate ? selectedAssignmentDate ? `${formatAssignmentDate(selectedAssignmentDate)}・共 ${visibleAssignments.length} 筆` : '目前沒有待處理日期' : `共 ${assignments.length} 筆`}</p></div></div><button type="button" onClick={load}><RefreshCw aria-hidden="true" /></button></div>
           {loading && <div className="student-list-empty"><RefreshCw className="is-spinning" />讀取中…</div>}
-          {!loading && !assignments.length && <div className="student-list-empty"><BookOpenCheck /><strong>尚未發布作業</strong><span>建立後會依共同或分組顯示。</span></div>}
+          {!loading && !assignments.length && <div className="student-list-empty"><BookOpenCheck /><strong>尚未發布作業</strong><span>建立後會依共同、分組或個別學生顯示。</span></div>}
           {!loading && filterByOutstandingDate && Boolean(assignments.length) && Boolean(outstandingAssignmentDates.length) && <label className="assignment-date-picker"><span>選擇作業日期</span><select value={selectedAssignmentDate} onChange={(event) => { setSelectedAssignmentDate(event.target.value); setTrackingAssignmentId('') }}>{outstandingAssignmentDates.map((date) => <option value={date} key={date}>{formatAssignmentDate(date)}</option>)}</select><small>依作業日期分類，只保留仍有學生未繳交的日期</small></label>}
           {!loading && filterByOutstandingDate && Boolean(assignments.length) && !outstandingAssignmentDates.length && <div className="student-list-empty"><CheckCheck /><strong>目前所有作業皆已繳交</strong><span>有未繳交作業的日期才會出現在選單。</span></div>}
           <div className="assignment-items">{visibleAssignments.map((item) => <article key={item.id}>
             <div className="assignment-item-summary">
-              <div className="assignment-item-copy"><span className={`assignment-audience is-${item.targetType === 'common' ? 'common' : item.targetGroupCode.toLowerCase()}`}>{item.targetType === 'common' ? '共同' : `${item.targetGroupCode} 組`}</span><strong>{item.subject?.name}・{item.content}</strong></div>
+              <div className="assignment-item-copy"><span className={`assignment-audience is-${item.targetType === 'common' ? 'common' : item.targetType === 'individual' ? 'individual' : item.targetGroupCode.toLowerCase()}`}>{item.targetType === 'common' ? '共同' : item.targetType === 'individual' ? '個別' : `${item.targetGroupCode} 組`}</span><strong>{item.subject?.name}・{item.content}</strong>{item.targetType === 'individual' && <small>指定：{item.recipientStudents.map((student) => student.seatNumber).join('、')} 號</small>}</div>
               <div className="assignment-item-meta"><span><CalendarClock />期限：{formatCompactDateTime(item.dueAt)}</span><small>發布者：{item.publisher}・{item.recipientCount} 人</small></div>
             </div>
             {showSubmissionOverview && <div className={`assignment-submission-overview ${item.isFullySubmitted ? 'is-complete' : 'is-pending'}`}>
@@ -497,12 +558,13 @@ export default function AssignmentManagement({
                 <strong><UserRoundCheck aria-hidden="true" />尚無作業對象資料</strong>
               )}
             </div>}
-            <div className="assignment-submission-actions"><button className="assignment-edit-button" type="button" onClick={() => startEditingAssignment(item)}><Pencil />編輯作業</button><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => { setEditingAssignmentId(''); setEditForm(null); setTrackingAssignmentId((current) => current === item.id ? '' : item.id) }}><UserRoundCheck />登記例外學生</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
+            <div className="assignment-submission-actions"><button className="assignment-edit-button" type="button" onClick={() => startEditingAssignment(item)}><Pencil />編輯作業</button><button type="button" disabled={submissionSavingId === item.id} onClick={() => markAllSubmitted(item)}><CheckCheck />{submissionSavingId === item.id ? '登記中…' : '全班已繳交'}</button><button type="button" onClick={() => { setEditingAssignmentId(''); setEditForm(null); setTrackingAssignmentId((current) => current === item.id ? '' : item.id) }}><UserRoundCheck />個別繳交狀態</button>{!isHelperMode && <button className="assignment-cancel-button" type="button" disabled={cancellingId === item.id} onClick={() => cancelPublishedAssignment(item)}><Ban />{cancellingId === item.id ? '取消中…' : '取消作業'}</button>}</div>
             {editingAssignmentId === item.id && editForm && <form className="assignment-edit-form" onSubmit={(event) => saveAssignmentEdit(event, item)}>
               <div className="assignment-edit-heading"><div><strong>編輯作業</strong><span>科目維持為「{item.subject?.name || '未設定科目'}」</span></div><button type="button" onClick={stopEditingAssignment} disabled={editSaving} aria-label="取消編輯"><X /></button></div>
               <label><span>作業內容</span><textarea required maxLength="1000" value={editForm.content} onChange={(event) => setEditForm({ ...editForm, content: event.target.value })} /></label>
               <div className="student-form-grid"><label><span>作業日期</span><input required type="date" value={editForm.assignmentDate} onChange={(event) => setEditForm({ ...editForm, assignmentDate: event.target.value })} /></label><label><span>繳交期限</span><input required type="datetime-local" min={editForm.assignmentDate ? `${editForm.assignmentDate}T00:00` : undefined} value={editForm.dueAt} onChange={(event) => setEditForm({ ...editForm, dueAt: event.target.value })} /></label></div>
-              <fieldset className="assignment-targets"><legend>適用對象</legend><div>{allowedTargets(item.subject).includes('common') && <button className={editForm.targetType === 'common' ? 'is-active' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'common' })}>共同作業</button>}{allowedTargets(item.subject).includes('A') && <button className={editForm.targetType === 'group' && editForm.targetGroupCode === 'A' ? 'is-active is-a' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'group', targetGroupCode: 'A' })}>A 組</button>}{allowedTargets(item.subject).includes('B') && <button className={editForm.targetType === 'group' && editForm.targetGroupCode === 'B' ? 'is-active is-b' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'group', targetGroupCode: 'B' })}>B 組</button>}</div></fieldset>
+              <fieldset className="assignment-targets"><legend>適用對象</legend><div>{allowedTargets(item.subject).includes('common') && <button className={editForm.targetType === 'common' ? 'is-active' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'common' })}>共同作業</button>}{allowedTargets(item.subject).includes('A') && <button className={editForm.targetType === 'group' && editForm.targetGroupCode === 'A' ? 'is-active is-a' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'group', targetGroupCode: 'A' })}>A 組</button>}{allowedTargets(item.subject).includes('B') && <button className={editForm.targetType === 'group' && editForm.targetGroupCode === 'B' ? 'is-active is-b' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'group', targetGroupCode: 'B' })}>B 組</button>}<button className={editForm.targetType === 'individual' ? 'is-active is-individual' : ''} type="button" onClick={() => setEditForm({ ...editForm, targetType: 'individual' })}>個別學生</button></div></fieldset>
+              {editForm.targetType === 'individual' && <IndividualAudiencePicker students={audienceStudents} selectedIds={editForm.studentIds} loading={audienceLoading} onChange={(studentIds) => setEditForm({ ...editForm, studentIds })} />}
               <p className="assignment-edit-hint">已有繳交或例外紀錄時，仍可修改文字、日期與期限，但不可更換組別。</p>
               <div className="assignment-edit-actions"><button type="submit" disabled={editSaving}><Save />{editSaving ? '儲存中…' : '儲存修改'}</button><button type="button" disabled={editSaving} onClick={stopEditingAssignment}><X />取消</button></div>
             </form>}

@@ -3,11 +3,12 @@ import { AlertTriangle, CheckCircle2, History, RefreshCw, Save, X } from 'lucide
 import {
   isFollowUpOverdue,
   loadSubmissionTracking,
-  recordIndividualSubmission,
-  recordSubmissionCheck,
+  recordIndividualAssignmentStatus,
 } from '../services/adminService.js'
 
-const reasonOptions = [
+const statusOptions = [
+  ['pending', '尚未繳交'],
+  ['submitted', '已繳交'],
   ['incomplete', '未完成'],
   ['not_brought', '未攜帶'],
   ['late', '遲交'],
@@ -16,7 +17,7 @@ const reasonOptions = [
   ['official_leave', '公假待補'],
   ['exempt', '免繳'],
 ]
-const reasonLabels = new Map(reasonOptions)
+const statusLabels = new Map(statusOptions)
 
 function formatDateTime(value) {
   if (!value) return '未記錄時間'
@@ -26,13 +27,14 @@ function formatDateTime(value) {
 }
 
 function eventDescription(event) {
-  if (!event.fromReason) return `建立為「${reasonLabels.get(event.toReason) || event.toReason}」`
+  if (event.note === 'reset_to_pending') return '改回「尚未繳交」'
+  if (!event.fromReason) return `建立為「${statusLabels.get(event.toReason) || event.toReason}」`
   if (event.toState === 'made_up') return event.fromReason === 'retest_required' || event.toReason === 'retest_required'
     ? '改為「已補考」'
     : '改為「已補交」'
   if (event.toState === 'waived') return '改為「免繳結案」'
-  const fromLabel = reasonLabels.get(event.fromReason) || event.fromReason
-  const toLabel = reasonLabels.get(event.toReason) || event.toReason
+  const fromLabel = statusLabels.get(event.fromReason) || event.fromReason
+  const toLabel = statusLabels.get(event.toReason) || event.toReason
   return fromLabel === toLabel ? `維持「${toLabel}」` : `「${fromLabel}」改為「${toLabel}」`
 }
 
@@ -49,12 +51,17 @@ function defaultFollowUp(dueAt) {
   return toLocalInput(date)
 }
 
+function currentStatus(student) {
+  if (student.exception?.workflowState === 'open') return student.exception.reason
+  if (student.submittedAt) return 'submitted'
+  return 'pending'
+}
+
 export default function SubmissionTrackingPanel({ assignment, stage = 'teacher', onClose, onNotice, onSaved }) {
   const isHelperStage = stage === 'helper'
   const [tracking, setTracking] = useState(null)
   const [forms, setForms] = useState({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [individualSavingId, setIndividualSavingId] = useState('')
 
   const load = useCallback(async () => {
@@ -63,8 +70,7 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
       const data = await loadSubmissionTracking({ assignmentId: assignment.id })
       setTracking(data)
       setForms(Object.fromEntries(data.students.map((student) => [student.id, {
-        selected: student.exception?.workflowState === 'open',
-        reason: student.exception?.reason || 'incomplete',
+        status: currentStatus(student),
         followUpDueAt: toLocalInput(student.exception?.followUpDueAt),
       }])))
     } catch (error) {
@@ -76,8 +82,8 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
 
   useEffect(() => { load() }, [load])
 
-  const selectedCount = useMemo(
-    () => Object.values(forms).filter((item) => item.selected).length,
+  const pendingCount = useMemo(
+    () => Object.values(forms).filter((item) => !['submitted', 'exempt'].includes(item.status)).length,
     [forms],
   )
 
@@ -88,18 +94,31 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
     }))
   }
 
-  async function markIndividualSubmitted(student) {
+  async function saveStudentStatus(student) {
+    const form = forms[student.id]
+    if (!form) return
+    if (['leave', 'official_leave'].includes(form.status) && !form.followUpDueAt) {
+      onNotice('error', '請假或公假學生必須設定下一次繳交期限。')
+      return
+    }
+    if (['leave', 'official_leave'].includes(form.status) && new Date(form.followUpDueAt).getTime() <= Date.now()) {
+      onNotice('error', '補交期限必須晚於現在。')
+      return
+    }
+
     setIndividualSavingId(student.id)
     try {
-      const result = await recordIndividualSubmission({
+      const result = await recordIndividualAssignmentStatus({
         assignmentId: assignment.id,
         studentId: student.id,
         stage,
+        status: form.status,
+        followUpDueAt: form.followUpDueAt,
       })
       await load()
       onNotice(
         'success',
-        `${student.seatNumber} 號 ${student.fullName} 已個別登記已繳交，其他學生狀態不變${result.countsAsLate ? '，原有遲交紀錄已保留。' : '，未列入遲交。'}`,
+        `${student.seatNumber} 號 ${student.fullName} 已設為「${statusLabels.get(form.status)}」，其他學生狀態未變更${result.countsAsLate ? '，原有遲交紀錄已保留。' : '。'}`,
       )
       await onSaved?.(result)
     } catch (error) {
@@ -109,50 +128,10 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
     }
   }
 
-  async function save() {
-    const exceptions = tracking.students
-      .filter((student) => forms[student.id]?.selected)
-      .map((student) => ({ studentId: student.id, ...forms[student.id] }))
-    const missingFollowUp = exceptions.some((item) => (
-      ['leave', 'official_leave'].includes(item.reason) && !item.followUpDueAt
-    ))
-    if (missingFollowUp) {
-      onNotice('error', '請假或公假學生必須設定下一次繳交期限。')
-      return
-    }
-    const invalidFollowUp = exceptions.some((item) => {
-      if (!['leave', 'official_leave'].includes(item.reason) || !item.followUpDueAt) return false
-      const student = tracking.students.find((candidate) => candidate.id === item.studentId)
-      const lockedExisting = isHelperStage && student?.exception?.workflowState === 'open'
-      return !lockedExisting && new Date(item.followUpDueAt).getTime() <= Date.now()
-    })
-    if (invalidFollowUp) {
-      onNotice('error', '追繳期限已到的請假或公假，請改登記為未完成、未攜帶或遲交；若期限有誤，也可改成未來的正確期限。')
-      return
-    }
-
-    setSaving(true)
-    try {
-      const result = await recordSubmissionCheck({ assignmentId: assignment.id, stage, exceptions })
-      await load()
-      onNotice(
-        'success',
-        result.openExceptionCount
-          ? `${isHelperStage ? '第一階段已保存，' : '已保存，'}尚有 ${result.openExceptionCount} 位學生待處理。`
-          : isHelperStage ? '第一階段已登記全班繳交完成。' : '已登記全班繳交完成。',
-      )
-      await onSaved?.(result)
-    } catch (error) {
-      onNotice('error', error.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <section className="submission-tracking-panel">
       <header>
-        <div><strong>{isHelperStage ? '小老師第一階段點收' : '教師繳交確認'}</strong><span>{isHelperStage ? '勾選未繳交學生並選擇原因；既有例外需由任課老師或導師修正。' : '勾選仍需處理的學生；取消既有勾選並儲存會改為已補交。'}</span></div>
+        <div><strong>{isHelperStage ? '小老師個別點收' : '個別繳交狀態'}</strong><span>每位學生分開儲存；修改一人不會連動其他學生。「免繳」不列入未繳交名單。</span></div>
         <button type="button" aria-label="關閉繳交確認" onClick={onClose}><X /></button>
       </header>
       {loading && <div className="submission-loading"><RefreshCw className="is-spinning" />讀取名單中…</div>}
@@ -160,67 +139,49 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
         <>
           <div className="submission-check-history">
             {tracking.checks.length
-              ? tracking.checks.map((check) => <span key={check.check_stage}>{check.check_stage === 'teacher' ? '教師' : '小老師'}：{check.result === 'all_submitted' ? '全班已繳' : '有例外'}</span>)
-              : <span>尚未登記繳交確認</span>}
+              ? tracking.checks.map((check) => <span key={check.check_stage}>{check.check_stage === 'teacher' ? '教師' : '小老師'}：{check.result === 'all_submitted' ? '全班已繳' : '曾登記例外'}</span>)
+              : <span>尚未登記全班繳交確認</span>}
           </div>
           <div className="submission-student-list">{tracking.students.map((student) => {
             const form = forms[student.id]
-            const needsFollowUp = ['leave', 'official_leave'].includes(form?.reason)
+            const needsFollowUp = ['leave', 'official_leave'].includes(form?.status)
             const lockedExisting = isHelperStage && student.exception?.workflowState === 'open'
             const overdue = isFollowUpOverdue(student.exception)
+            const saving = individualSavingId === student.id
             return (
-              <article className={`${form?.selected ? 'is-selected' : ''}${overdue ? ' is-follow-up-overdue' : ''}`} key={student.id}>
-                <label className="submission-student-toggle">
-                  <input type="checkbox" checked={Boolean(form?.selected)} disabled={lockedExisting} onChange={(event) => update(student.id, { selected: event.target.checked })} />
-                  <span><strong>{student.seatNumber} 號・{student.fullName}</strong><small>{student.studentId}</small></span>
-                </label>
-                {form?.selected ? (
-                  <>
-                    <div className="submission-row-actions">
-                      <select value={form.reason} disabled={lockedExisting} onChange={(event) => update(student.id, {
-                        reason: event.target.value,
-                        followUpDueAt: ['leave', 'official_leave'].includes(event.target.value)
-                          ? form.followUpDueAt || defaultFollowUp(assignment.dueAt)
-                          : '',
-                      })}>{reasonOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
-                      {!lockedExisting && (
-                        <button
-                          className="submission-individual-submit-button"
-                          type="button"
-                          disabled={saving || Boolean(individualSavingId)}
-                          onClick={() => markIndividualSubmitted(student)}
-                        >
-                          <CheckCircle2 />{individualSavingId === student.id ? '登記中…' : '個別設為已繳交'}
-                        </button>
-                      )}
-                    </div>
-                    {needsFollowUp && <input aria-label={`${student.fullName}補交期限`} type="datetime-local" disabled={lockedExisting} value={form.followUpDueAt} onChange={(event) => update(student.id, { followUpDueAt: event.target.value })} />}
-                    {overdue && <div className="submission-overdue-alert"><AlertTriangle aria-hidden="true" /><span><strong>追繳期限已到</strong>{isHelperStage ? '請通知任課老師或導師處理。' : '請改為未完成、未攜帶、遲交，或修正追繳期限。'}</span></div>}
-                  </>
-                ) : (
-                  <div className="submission-row-actions">
-                    <span className={`submission-complete-status${student.submittedAt ? '' : ' is-pending'}`}>
-                      <CheckCircle2 />{student.exception?.reason === 'retest_required'
-                        ? '已補考／本次已繳'
-                        : student.exception
-                          ? '已補交／本次已繳'
-                          : student.submittedAt ? '已繳交' : '尚未個別登記'}
-                    </span>
-                    {!student.submittedAt && !student.exception && (
-                      <button
-                        className="submission-individual-submit-button"
-                        type="button"
-                        disabled={saving || Boolean(individualSavingId)}
-                        onClick={() => markIndividualSubmitted(student)}
-                      >
-                        <CheckCircle2 />{individualSavingId === student.id ? '登記中…' : '個別設為已繳交'}
-                      </button>
-                    )}
-                  </div>
-                )}
+              <article className={`${!['submitted', 'pending'].includes(form?.status) ? 'is-selected' : ''}${overdue ? ' is-follow-up-overdue' : ''}`} key={student.id}>
+                <div className="submission-student-identity">
+                  <strong>{student.seatNumber} 號・{student.fullName}</strong>
+                  <small>{student.studentId}</small>
+                </div>
+                <div className="submission-row-actions">
+                  <select
+                    aria-label={`${student.fullName}繳交狀態`}
+                    value={form?.status || 'pending'}
+                    disabled={lockedExisting || Boolean(individualSavingId)}
+                    onChange={(event) => update(student.id, {
+                      status: event.target.value,
+                      followUpDueAt: ['leave', 'official_leave'].includes(event.target.value)
+                        ? form.followUpDueAt || defaultFollowUp(assignment.dueAt)
+                        : '',
+                    })}
+                  >{statusOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
+                  {needsFollowUp && <input aria-label={`${student.fullName}補交期限`} type="datetime-local" disabled={lockedExisting || Boolean(individualSavingId)} value={form.followUpDueAt} onChange={(event) => update(student.id, { followUpDueAt: event.target.value })} />}
+                  <button
+                    className="submission-individual-submit-button"
+                    type="button"
+                    disabled={lockedExisting || Boolean(individualSavingId)}
+                    onClick={() => saveStudentStatus(student)}
+                  >
+                    {saving ? <RefreshCw className="is-spinning" /> : form?.status === 'submitted' ? <CheckCircle2 /> : <Save />}
+                    {saving ? '儲存中…' : '儲存此生狀態'}
+                  </button>
+                </div>
+                {lockedExisting && <div className="submission-locked-hint">已有紀錄，請由任課老師或導師修改。</div>}
+                {overdue && <div className="submission-overdue-alert"><AlertTriangle aria-hidden="true" /><span><strong>追繳期限已到</strong>{isHelperStage ? '請通知任課老師或導師處理。' : '請改為未完成、未攜帶、遲交，或修正追繳期限。'}</span></div>}
                 {student.exception && (
                   <details className="submission-status-history">
-                    <summary><History aria-hidden="true" />查看修正歷程・原始原因：{reasonLabels.get(student.exception.initialReason) || student.exception.initialReason}</summary>
+                    <summary><History aria-hidden="true" />查看修正歷程・原始原因：{statusLabels.get(student.exception.initialReason) || student.exception.initialReason}</summary>
                     <ol>
                       {student.exception.events.length
                         ? student.exception.events.map((event) => (
@@ -234,8 +195,7 @@ export default function SubmissionTrackingPanel({ assignment, stage = 'teacher',
             )
           })}</div>
           <footer>
-            <span>目前勾選 {selectedCount} 位例外學生</span>
-            <button className="approve-button" type="button" disabled={saving} onClick={save}><Save />{saving ? '儲存中…' : selectedCount ? '儲存例外名單' : '登記全班已繳交'}</button>
+            <span>目前尚有 {pendingCount} 位學生未完成；需全班結案時，請使用作業上方的「全班已繳交」。</span>
           </footer>
         </>
       )}

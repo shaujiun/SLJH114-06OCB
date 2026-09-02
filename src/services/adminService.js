@@ -346,7 +346,7 @@ export async function loadAssignmentRecipientRows(client, assignmentIds) {
     for (let pageStart = 0; ; pageStart += ASSIGNMENT_RECIPIENT_PAGE_SIZE) {
       const { data, error } = await client
         .from('assignment_recipients')
-        .select('assignment_id,student_id,submitted_at,students(seat_number)')
+        .select('assignment_id,student_id,submitted_at,students(id,student_id_code,seat_number,full_name)')
         .in('assignment_id', idBatch)
         .order('assignment_id')
         .order('student_id')
@@ -359,19 +359,56 @@ export async function loadAssignmentRecipientRows(client, assignmentIds) {
   return recipients
 }
 
-export function mapAssignmentRecipientSummaries(recipients = []) {
+export async function loadAssignmentExceptionRows(client, assignmentIds) {
+  const ids = [...new Set((assignmentIds || []).filter(Boolean))]
+  if (!ids.length) return []
+
+  const exceptions = []
+  for (let batchStart = 0; batchStart < ids.length; batchStart += ASSIGNMENT_RECIPIENT_ID_BATCH_SIZE) {
+    const idBatch = ids.slice(batchStart, batchStart + ASSIGNMENT_RECIPIENT_ID_BATCH_SIZE)
+    for (let pageStart = 0; ; pageStart += ASSIGNMENT_RECIPIENT_PAGE_SIZE) {
+      const { data, error } = await client
+        .from('submission_exceptions')
+        .select('assignment_id,student_id,current_reason,workflow_state')
+        .in('assignment_id', idBatch)
+        .order('assignment_id')
+        .order('student_id')
+        .range(pageStart, pageStart + ASSIGNMENT_RECIPIENT_PAGE_SIZE - 1)
+      const page = requireData(data, error, '無法讀取作業免繳紀錄。')
+      exceptions.push(...page)
+      if (page.length < ASSIGNMENT_RECIPIENT_PAGE_SIZE) break
+    }
+  }
+  return exceptions
+}
+
+export function mapAssignmentRecipientSummaries(recipients = [], exceptions = []) {
+  const exemptRecipients = new Set(
+    exceptions
+      .filter((item) => item.workflow_state === 'open' && item.current_reason === 'exempt')
+      .map((item) => `${item.assignment_id}:${item.student_id}`),
+  )
   const summaries = recipients.reduce((result, recipient) => {
     const summary = result[recipient.assignment_id] || {
       recipientCount: 0,
       pendingRecipientCount: 0,
       pendingStudents: [],
+      recipientStudents: [],
     }
     summary.recipientCount += 1
+    const student = relation(recipient.students)
+    const seatNumber = Number(student?.seat_number)
+    if (Number.isFinite(seatNumber)) {
+      summary.recipientStudents.push({
+        id: recipient.student_id,
+        studentId: student?.student_id_code,
+        seatNumber,
+        fullName: student?.full_name,
+      })
+    }
 
-    if (!recipient.submitted_at) {
+    if (!recipient.submitted_at && !exemptRecipients.has(`${recipient.assignment_id}:${recipient.student_id}`)) {
       summary.pendingRecipientCount += 1
-      const student = relation(recipient.students)
-      const seatNumber = Number(student?.seat_number)
       if (Number.isFinite(seatNumber)) {
         summary.pendingStudents.push({
           id: recipient.student_id,
@@ -386,6 +423,7 @@ export function mapAssignmentRecipientSummaries(recipients = []) {
 
   Object.values(summaries).forEach((summary) => {
     summary.pendingStudents.sort((left, right) => left.seatNumber - right.seatNumber)
+    summary.recipientStudents.sort((left, right) => left.seatNumber - right.seatNumber)
   })
 
   return summaries
@@ -403,8 +441,12 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
   if (classSubjectIds?.length) assignmentQuery = assignmentQuery.in('class_subject_id', classSubjectIds)
   const assignmentsResult = await assignmentQuery
   const rows = requireData(assignmentsResult.data, assignmentsResult.error, '無法讀取作業清單。')
-  const recipients = await loadAssignmentRecipientRows(client, rows.map((row) => row.id))
-  const recipientSummaries = mapAssignmentRecipientSummaries(recipients)
+  const assignmentIds = rows.map((row) => row.id)
+  const [recipients, exceptions] = await Promise.all([
+    loadAssignmentRecipientRows(client, assignmentIds),
+    loadAssignmentExceptionRows(client, assignmentIds),
+  ])
+  const recipientSummaries = mapAssignmentRecipientSummaries(recipients, exceptions)
   return rows.map((row) => {
     const classSubject = relation(row.class_subjects)
     const subject = relation(classSubject?.subjects)
@@ -412,6 +454,7 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
       recipientCount: 0,
       pendingRecipientCount: 0,
       pendingStudents: [],
+      recipientStudents: [],
     }
     return {
       id: row.id,
@@ -434,26 +477,55 @@ export async function loadAssignments({ academicTermId, classSubjectIds, isActiv
 }
 
 export function mapOutstandingAssignmentSeats({ recipients = [], exceptions = [] }) {
-  const openExceptionRecipients = new Set(
+  const exemptRecipients = new Set(
     exceptions
-      .filter((item) => item.workflow_state === 'open' && item.current_reason !== 'exempt')
+      .filter((item) => item.workflow_state === 'open' && item.current_reason === 'exempt')
       .map((item) => `${item.assignment_id}:${item.student_id}`),
   )
+  const assignmentsWithIndividualTracking = new Set(
+    exceptions.map((item) => item.assignment_id),
+  )
 
-  return recipients.reduce((result, recipient) => {
-    if (recipient.submitted_at) return result
-    if (!openExceptionRecipients.has(`${recipient.assignment_id}:${recipient.student_id}`)) return result
-
-    const student = relation(recipient.students)
-    const seatNumber = Number(student?.seat_number)
-    if (!Number.isFinite(seatNumber)) return result
-
-    const seats = result[recipient.assignment_id] || []
-    if (!seats.includes(seatNumber)) seats.push(seatNumber)
-    seats.sort((left, right) => left - right)
-    result[recipient.assignment_id] = seats
+  const grouped = recipients.reduce((result, recipient) => {
+    const summary = result[recipient.assignment_id] || { submittedCount: 0, pendingSeats: [] }
+    const key = `${recipient.assignment_id}:${recipient.student_id}`
+    if (exemptRecipients.has(key)) {
+      result[recipient.assignment_id] = summary
+      return result
+    }
+    if (recipient.submitted_at) {
+      summary.submittedCount += 1
+    } else {
+      const student = relation(recipient.students)
+      const seatNumber = Number(student?.seat_number)
+      if (Number.isFinite(seatNumber)) summary.pendingSeats.push(seatNumber)
+    }
+    result[recipient.assignment_id] = summary
     return result
   }, {})
+
+  return Object.fromEntries(Object.entries(grouped).flatMap(([assignmentId, summary]) => {
+    const hasRecordedStudentStatus = summary.submittedCount > 0
+      || assignmentsWithIndividualTracking.has(assignmentId)
+    if (!summary.pendingSeats.length || !hasRecordedStudentStatus) return []
+    return [[assignmentId, [...new Set(summary.pendingSeats)].sort((left, right) => left - right)]]
+  }))
+}
+
+export async function loadAssignmentAudienceStudents({ classId }) {
+  const client = requireSupabase()
+  const { data, error } = await client
+    .from('students')
+    .select('id,student_id_code,seat_number,full_name')
+    .eq('class_id', classId)
+    .eq('is_active', true)
+    .order('seat_number')
+  return requireData(data, error, '無法讀取個別作業學生名單。').map((student) => ({
+    id: student.id,
+    studentId: student.student_id_code,
+    seatNumber: student.seat_number,
+    fullName: student.full_name,
+  }))
 }
 
 export async function loadOutstandingAssignmentSeats({ assignmentIds = [] }) {
@@ -504,10 +576,10 @@ export function filterAssignmentsByDate(assignments, assignmentDate) {
 }
 
 export function sortAssignmentsByTarget(assignments) {
-  const targetOrder = { common: 0, A: 1, B: 2 }
+  const targetOrder = { common: 0, individual: 1, A: 2, B: 3 }
   return [...(assignments || [])].sort((left, right) => {
-    const leftKey = left.targetType === 'common' ? 'common' : left.targetGroupCode
-    const rightKey = right.targetType === 'common' ? 'common' : right.targetGroupCode
+    const leftKey = left.targetType === 'common' ? 'common' : left.targetType === 'individual' ? 'individual' : left.targetGroupCode
+    const rightKey = right.targetType === 'common' ? 'common' : right.targetType === 'individual' ? 'individual' : right.targetGroupCode
     const targetDifference = (targetOrder[leftKey] ?? 99) - (targetOrder[rightKey] ?? 99)
     if (targetDifference) return targetDifference
     return new Date(right.dueAt).getTime() - new Date(left.dueAt).getTime()
@@ -522,6 +594,7 @@ export async function publishAssignment({
   dueAt,
   targetType,
   targetGroupCode,
+  studentIds = [],
 }) {
   const client = requireSupabase()
   const { data, error } = await client.rpc('publish_contact_book_assignment', {
@@ -532,11 +605,14 @@ export async function publishAssignment({
     p_due_at: new Date(dueAt).toISOString(),
     p_target_type: targetType,
     p_target_group_code: targetType === 'group' ? targetGroupCode : null,
+    p_student_ids: targetType === 'individual' ? [...new Set(studentIds)] : null,
   })
   if (error) {
     const databaseMessage = error.message || ''
     let message = '作業發布失敗，請重新整理後再試一次。'
-    if (databaseMessage.includes('empty_assignment_audience')) {
+    if (databaseMessage.includes('invalid_assignment_recipients')) {
+      message = '個別作業名單包含無效或重複的學生，請重新選擇。'
+    } else if (databaseMessage.includes('empty_assignment_audience')) {
       message = '這個分組目前沒有學生，作業未發布。'
     } else if (databaseMessage.includes('invalid_class_subject_term')) {
       message = '所選科目與歸類學期不屬於同一班級，請重新整理後再試。'
@@ -559,6 +635,7 @@ export async function updateAssignment({
   dueAt,
   targetType,
   targetGroupCode,
+  studentIds = [],
 }) {
   const client = requireSupabase()
   const { data, error } = await client.rpc('update_contact_book_assignment', {
@@ -568,11 +645,14 @@ export async function updateAssignment({
     p_due_at: new Date(dueAt).toISOString(),
     p_target_type: targetType,
     p_target_group_code: targetType === 'group' ? targetGroupCode : null,
+    p_student_ids: targetType === 'individual' ? [...new Set(studentIds)] : null,
   })
   if (error) {
     const databaseMessage = error.message || ''
     let message = '作業修改失敗，請重新整理後再試一次。'
-    if (databaseMessage.includes('assignment_target_locked')) {
+    if (databaseMessage.includes('invalid_assignment_recipients')) {
+      message = '個別作業名單包含無效或重複的學生，請重新選擇。'
+    } else if (databaseMessage.includes('assignment_target_locked')) {
       message = '這項作業已有繳交或例外紀錄，只能修改內容、日期與期限，不能再更換組別。'
     } else if (databaseMessage.includes('empty_assignment_audience')) {
       message = '所選分組目前沒有學生，組別未變更。'
@@ -655,6 +735,7 @@ export function mapSubmissionTrackingData({ recipients, checks, exceptions, even
       countsAsMissing: event.counts_as_missing,
       countsAsLate: event.counts_as_late,
       changedBy: event.changed_by,
+      note: event.note,
       createdAt: event.created_at,
     })
     map.set(event.submission_exception_id, current)
@@ -715,7 +796,7 @@ export async function loadSubmissionTracking({ assignmentId }) {
   if (exceptions.length) {
     const { data, error } = await client
       .from('submission_status_events')
-      .select('id,submission_exception_id,from_reason,to_reason,from_state,to_state,counts_as_missing,counts_as_late,changed_by,created_at')
+      .select('id,submission_exception_id,from_reason,to_reason,from_state,to_state,counts_as_missing,counts_as_late,changed_by,note,created_at')
       .in('submission_exception_id', exceptions.map((item) => item.id))
       .order('created_at')
     events = requireData(data, error, '無法讀取繳交修正歷程。')
@@ -755,24 +836,39 @@ export async function recordSubmissionCheck({ assignmentId, stage = 'teacher', e
 }
 
 export async function recordIndividualSubmission({ assignmentId, studentId, stage = 'teacher' }) {
+  return recordIndividualAssignmentStatus({ assignmentId, studentId, stage, status: 'submitted' })
+}
+
+export async function recordIndividualAssignmentStatus({
+  assignmentId,
+  studentId,
+  stage = 'teacher',
+  status,
+  followUpDueAt = '',
+}) {
   const client = requireSupabase()
-  const { data, error } = await client.rpc('record_individual_assignment_submission', {
+  const { data, error } = await client.rpc('record_individual_assignment_status', {
     p_assignment_id: assignmentId,
     p_student_id: studentId,
     p_stage: stage,
+    p_status: status,
+    p_follow_up_due_at: followUpDueAt ? new Date(followUpDueAt).toISOString() : null,
   })
   if (error) {
     const databaseMessage = error.message || ''
     if (databaseMessage.includes('submission_permission_required')) {
-      throw new Error('目前帳號沒有登記這位學生已繳交的權限。')
+      throw new Error('目前帳號沒有修改這位學生繳交狀態的權限。')
     }
     if (databaseMessage.includes('helper_cannot_resolve_existing_exception')) {
-      throw new Error('已有例外紀錄的學生，需由任課老師或導師設為已繳交。')
+      throw new Error('已有紀錄的學生，需由任課老師或導師修改狀態。')
     }
     if (databaseMessage.includes('invalid_assignment_recipient')) {
       throw new Error('找不到這份作業的指定學生。')
     }
-    throw new Error('個別已繳交登記失敗，請重新整理後再試。')
+    if (databaseMessage.includes('invalid_individual_status')) {
+      throw new Error('請確認個別繳交狀態及補交期限。')
+    }
+    throw new Error('個別繳交狀態儲存失敗，請重新整理後再試。')
   }
   return data
 }
