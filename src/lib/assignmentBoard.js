@@ -87,5 +87,16 @@ export function filterPreviousDayAssignmentBoardItems(
     if (!assignmentDate || assignmentDate > referenceDate) return false
     if (assignmentDate === referenceDate) return true
     return assignment.outstandingSeatNumbers?.length > 0
+      || (!assignment.isFullySubmitted && assignment.pendingRecipientCount > 0)
   })
+}
+
+export function isUnreviewedPreviousDayCarryover(assignment, referenceDate) {
+  return Boolean(
+    assignment?.assignmentDate
+    && assignment.assignmentDate < referenceDate
+    && !assignment.isFullySubmitted
+    && assignment.pendingRecipientCount > 0
+    && !assignment.outstandingSeatNumbers?.length,
+  )
 }

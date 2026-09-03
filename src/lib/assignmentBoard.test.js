@@ -3,6 +3,7 @@ import {
   buildAssignmentBoardGroups,
   filterCurrentAssignmentBoardItems,
   filterPreviousDayAssignmentBoardItems,
+  isUnreviewedPreviousDayCarryover,
   previousLocalDateString,
   previousSchoolDateString,
 } from './assignmentBoard.js'
@@ -46,19 +47,35 @@ describe('作業長全畫面作業看板', () => {
       .toEqual(['today-open', 'today-complete', 'older-open', 'expired-with-missing'])
   })
 
-  it('前一上課日聯絡簿顯示該日全部作業，更早作業只保留有缺交名單者', () => {
+  it('前一上課日聯絡簿顯示該日全部作業，更早作業保留缺交或尚未檢查者', () => {
     const now = new Date('2026-08-14T10:00:00+08:00')
     const assignments = [
       { id: 'previous-day-open', assignmentDate: '2026-08-13', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false },
       { id: 'previous-day-complete', assignmentDate: '2026-08-13', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: true },
       { id: 'older-with-missing', assignmentDate: '2026-08-11', dueAt: '2026-08-12T08:00:00+08:00', isFullySubmitted: false, outstandingSeatNumbers: [5] },
-      { id: 'older-without-missing', assignmentDate: '2026-08-12', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false, outstandingSeatNumbers: [] },
+      { id: 'older-unreviewed', assignmentDate: '2026-08-12', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false, pendingRecipientCount: 18, outstandingSeatNumbers: [] },
+      { id: 'older-without-recipients', assignmentDate: '2026-08-12', dueAt: '2026-08-14T08:00:00+08:00', isFullySubmitted: false, pendingRecipientCount: 0, outstandingSeatNumbers: [] },
       { id: 'today', assignmentDate: '2026-08-14', dueAt: '2026-08-15T08:00:00+08:00', isFullySubmitted: false },
     ]
 
     expect(filterPreviousDayAssignmentBoardItems(assignments, '2026-08-13').map((item) => item.id))
-      .toEqual(['previous-day-open', 'previous-day-complete', 'older-with-missing'])
+      .toEqual(['previous-day-open', 'previous-day-complete', 'older-with-missing', 'older-unreviewed'])
     expect(previousLocalDateString(now)).toBe('2026-08-13')
+  })
+
+  it('更早且全班尚未點收的作業會標示為尚未檢查', () => {
+    expect(isUnreviewedPreviousDayCarryover({
+      assignmentDate: '2026-09-01',
+      isFullySubmitted: false,
+      pendingRecipientCount: 18,
+      outstandingSeatNumbers: [],
+    }, '2026-09-02')).toBe(true)
+    expect(isUnreviewedPreviousDayCarryover({
+      assignmentDate: '2026-09-01',
+      isFullySubmitted: false,
+      pendingRecipientCount: 3,
+      outstandingSeatNumbers: [2, 7, 9],
+    }, '2026-09-02')).toBe(false)
   })
 
   it('前一次上課日會跳過週末及行事曆中的放假日', () => {

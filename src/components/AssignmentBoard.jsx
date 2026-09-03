@@ -5,6 +5,7 @@ import {
   buildAssignmentBoardGroups,
   filterCurrentAssignmentBoardItems,
   filterPreviousDayAssignmentBoardItems,
+  isUnreviewedPreviousDayCarryover,
 } from '../lib/assignmentBoard.js'
 import {
   buildQuizReminderBoardGroups,
@@ -40,6 +41,8 @@ function AssignmentGroupColumn({
   quizReminderLoading,
   quizReminderError,
   quizReminderTitle,
+  mode,
+  referenceDate,
   loading,
   error,
 }) {
@@ -71,6 +74,7 @@ function AssignmentGroupColumn({
                   <strong>{assignment.content}</strong>
                   {assignment.targetType === 'individual' && assignment.recipientStudents?.length > 0 && <small>個別指定：{assignment.recipientStudents.map((student) => student.seatNumber).join('、')} 號</small>}
                   {assignment.outstandingSeatNumbers?.length > 0 && <small>缺交名單：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
+                  {mode === 'previous-day' && isUnreviewedPreviousDayCarryover(assignment, referenceDate) && <small>尚未檢查繳交狀況</small>}
                 </div>
               </li>
             ))}
@@ -152,6 +156,8 @@ export default function AssignmentBoard({
           quizReminderLoading={quizReminderLoading}
           quizReminderError={quizReminderError}
           quizReminderTitle={isPreviousDay ? '成績填寫項目' : '今日成績提醒'}
+          mode={mode}
+          referenceDate={referenceDate}
           loading={loading}
           error={error}
         />
@@ -162,6 +168,8 @@ export default function AssignmentBoard({
           quizReminderLoading={quizReminderLoading}
           quizReminderError={quizReminderError}
           quizReminderTitle={isPreviousDay ? '成績填寫項目' : '今日成績提醒'}
+          mode={mode}
+          referenceDate={referenceDate}
           loading={loading}
           error={error}
         />
