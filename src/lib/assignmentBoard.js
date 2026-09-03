@@ -7,12 +7,16 @@ function isGroupAssignment(assignment, groupCode) {
     && String(assignment?.targetGroupCode || '').toUpperCase() === groupCode
 }
 
+function isIndividualAssignment(assignment) {
+  return assignment?.targetType === 'individual'
+}
+
 export function buildAssignmentBoardGroups(assignments = []) {
   const rows = Array.isArray(assignments) ? assignments : []
 
   return {
-    A: rows.filter((assignment) => isCommonAssignment(assignment) || isGroupAssignment(assignment, 'A')),
-    B: rows.filter((assignment) => isCommonAssignment(assignment) || isGroupAssignment(assignment, 'B')),
+    A: rows.filter((assignment) => isCommonAssignment(assignment) || isGroupAssignment(assignment, 'A') || isIndividualAssignment(assignment)),
+    B: rows.filter((assignment) => isCommonAssignment(assignment) || isGroupAssignment(assignment, 'B') || isIndividualAssignment(assignment)),
   }
 }
 
@@ -83,5 +87,16 @@ export function filterPreviousDayAssignmentBoardItems(
     if (!assignmentDate || assignmentDate > referenceDate) return false
     if (assignmentDate === referenceDate) return true
     return assignment.outstandingSeatNumbers?.length > 0
+      || (!assignment.isFullySubmitted && assignment.pendingRecipientCount > 0)
   })
+}
+
+export function isUnreviewedPreviousDayCarryover(assignment, referenceDate) {
+  return Boolean(
+    assignment?.assignmentDate
+    && assignment.assignmentDate < referenceDate
+    && !assignment.isFullySubmitted
+    && assignment.pendingRecipientCount > 0
+    && !assignment.outstandingSeatNumbers?.length,
+  )
 }

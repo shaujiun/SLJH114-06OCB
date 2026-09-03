@@ -61,7 +61,7 @@ export function mapStudentAssignmentRow(row) {
 
 export function filterVisibleStudentAssignments(assignments, academicTermId) {
   return (assignments || []).filter((item) => (
-    item.academicTermId === academicTermId && !item.submittedAt
+    item.academicTermId === academicTermId && !item.submittedAt && !item.isExempt
   ))
 }
 
@@ -85,13 +85,15 @@ export function groupStudentAssignments(assignments) {
   for (const assignment of assignments || []) {
     const key = assignment.targetType === 'common'
       ? 'common'
-      : String(assignment.targetGroupCode || '').toUpperCase()
-    const label = key === 'common' ? '共同' : `${key} 組`
+      : assignment.targetType === 'individual'
+        ? 'individual'
+        : String(assignment.targetGroupCode || '').toUpperCase()
+    const label = key === 'common' ? '共同' : key === 'individual' ? '個別指定' : `${key} 組`
     const current = groups.get(key) || { key, label, assignments: [] }
     current.assignments.push(assignment)
     groups.set(key, current)
   }
-  const order = { common: 0, A: 1, B: 2 }
+  const order = { common: 0, individual: 1, A: 2, B: 3 }
   return [...groups.values()].sort((left, right) => (
     (order[left.key] ?? 99) - (order[right.key] ?? 99)
   ))
@@ -282,14 +284,11 @@ export async function loadStudentDashboard() {
   const submittedAtByAssignmentId = new Map(
     recipientRows.map((row) => [row.assignment_id, row.submitted_at]),
   )
-  const assignments = requireData(
+  const assignmentRows = requireData(
     assignmentsResult.data,
     assignmentsResult.error,
     '無法讀取個人作業，請重新整理。',
-  ).map((row) => ({
-    ...mapStudentAssignmentRow(row),
-    submittedAt: submittedAtByAssignmentId.get(row.id) || null,
-  }))
+  )
   const exceptions = requireData(
     exceptionsResult.data,
     exceptionsResult.error,
@@ -306,6 +305,16 @@ export async function loadStudentDashboard() {
     resolvedAt: row.resolved_at,
     hideAfter: row.hide_after,
     createdAt: row.created_at,
+  }))
+  const exemptAssignmentIds = new Set(
+    exceptions
+      .filter((item) => item.workflowState === 'open' && item.currentReason === 'exempt')
+      .map((item) => item.assignmentId),
+  )
+  const assignments = assignmentRows.map((row) => ({
+    ...mapStudentAssignmentRow(row),
+    submittedAt: submittedAtByAssignmentId.get(row.id) || null,
+    isExempt: exemptAssignmentIds.has(row.id),
   }))
   const cancelledLateAssignmentHistory = requireData(
     cancelledLateHistoryResult.data,

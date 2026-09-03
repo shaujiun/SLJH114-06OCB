@@ -38,18 +38,21 @@ describe('學生聯絡簿資料', () => {
     const groups = groupStudentAssignments([
       { id: 'english-b', targetType: 'group', targetGroupCode: 'B', subject: { name: '英語' } },
       { id: 'math-common', targetType: 'common', targetGroupCode: null, subject: { name: '數學' } },
+      { id: 'individual', targetType: 'individual', targetGroupCode: null, subject: { name: '自然' } },
       { id: 'math-b', targetType: 'group', targetGroupCode: 'B', subject: { name: '數學' } },
       { id: 'science-common', targetType: 'common', targetGroupCode: null, subject: { name: '自然' } },
     ])
-    expect(groups.map((group) => group.label)).toEqual(['共同', 'B 組'])
+    expect(groups.map((group) => group.label)).toEqual(['共同', '個別指定', 'B 組'])
     expect(groups[0].assignments.map((item) => item.id)).toEqual(['math-common', 'science-common'])
-    expect(groups[1].assignments.map((item) => item.id)).toEqual(['english-b', 'math-b'])
+    expect(groups[1].assignments.map((item) => item.id)).toEqual(['individual'])
+    expect(groups[2].assignments.map((item) => item.id)).toEqual(['english-b', 'math-b'])
   })
 
   it('學生端只顯示尚未繳交且屬於目前學期的作業', () => {
     const assignments = [
       { id: 'open-current', academicTermId: 'term-1', submittedAt: null },
       { id: 'submitted-current', academicTermId: 'term-1', submittedAt: '2026-08-11T08:00:00Z' },
+      { id: 'exempt-current', academicTermId: 'term-1', submittedAt: null, isExempt: true },
       { id: 'open-other-term', academicTermId: 'term-2', submittedAt: null },
     ]
     expect(filterVisibleStudentAssignments(assignments, 'term-1').map((item) => item.id))

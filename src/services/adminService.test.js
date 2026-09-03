@@ -17,6 +17,7 @@ import {
   mapClassSubjectRow,
   regenerateStudentActivation,
   publishAssignment,
+  recordIndividualAssignmentStatus,
   recordIndividualSubmission,
   recordSubmissionCheck,
   restoreAssignment,
@@ -169,11 +170,38 @@ describe('作業發布服務', () => {
           { id: 'student-1', seatNumber: 1 },
           { id: 'student-3', seatNumber: 3 },
         ],
+        recipientStudents: [
+          { id: 'student-1', studentId: undefined, seatNumber: 1, fullName: '李小明' },
+          { id: 'student-2', studentId: undefined, seatNumber: 2, fullName: '陳小美' },
+          { id: 'student-3', studentId: undefined, seatNumber: 3, fullName: '王小華' },
+        ],
       },
       'assignment-2': {
         recipientCount: 1,
         pendingRecipientCount: 0,
         pendingStudents: [],
+        recipientStudents: [
+          { id: 'student-4', studentId: undefined, seatNumber: 4, fullName: '林小安' },
+        ],
+      },
+    })
+  })
+
+  it('免繳學生不列入未繳交人數，但仍保留於指定對象清單', () => {
+    expect(mapAssignmentRecipientSummaries([
+      { assignment_id: 'assignment-1', student_id: 'student-1', submitted_at: null, students: { student_id_code: '114101', seat_number: 1, full_name: '李小明' } },
+      { assignment_id: 'assignment-1', student_id: 'student-2', submitted_at: null, students: { student_id_code: '114102', seat_number: 2, full_name: '陳小美' } },
+    ], [
+      { assignment_id: 'assignment-1', student_id: 'student-2', current_reason: 'exempt', workflow_state: 'open' },
+    ])).toEqual({
+      'assignment-1': {
+        recipientCount: 2,
+        pendingRecipientCount: 1,
+        pendingStudents: [{ id: 'student-1', seatNumber: 1 }],
+        recipientStudents: [
+          { id: 'student-1', studentId: '114101', seatNumber: 1, fullName: '李小明' },
+          { id: 'student-2', studentId: '114102', seatNumber: 2, fullName: '陳小美' },
+        ],
       },
     })
   })
@@ -213,7 +241,7 @@ describe('作業發布服務', () => {
     expect(ranges).toEqual([[0, 999], [1000, 1999]])
   })
 
-  it('作業看板把所有待處理原因合併為缺交名單，排除免繳、已結案與已繳交者', () => {
+  it('作業看板把所有待處理原因及改回尚未繳交者合併為缺交名單，排除免繳與已繳交者', () => {
     const seats = mapOutstandingAssignmentSeats({
       recipients: [
         { assignment_id: 'assignment-1', student_id: 'student-3', submitted_at: null, students: { seat_number: 3 } },
@@ -238,8 +266,30 @@ describe('作業發布服務', () => {
 
     expect(seats).toEqual({
       'assignment-1': [1, 3],
-      'assignment-2': [8, 9, 10],
+      'assignment-2': [8, 9, 10, 11],
     })
+  })
+
+  it('設定一位學生免繳後，缺交名單改列其餘尚未繳交學生', () => {
+    expect(mapOutstandingAssignmentSeats({
+      recipients: [
+        { assignment_id: 'assignment-1', student_id: 'student-1', submitted_at: null, students: { seat_number: 1 } },
+        { assignment_id: 'assignment-1', student_id: 'student-2', submitted_at: null, students: { seat_number: 2 } },
+      ],
+      exceptions: [
+        { assignment_id: 'assignment-1', student_id: 'student-1', current_reason: 'exempt', workflow_state: 'open' },
+      ],
+    })).toEqual({ 'assignment-1': [2] })
+  })
+
+  it('部分學生已繳時，缺交名單會包含其餘尚未繳交者', () => {
+    expect(mapOutstandingAssignmentSeats({
+      recipients: [
+        { assignment_id: 'assignment-1', student_id: 'student-1', submitted_at: '2026-08-14T08:00:00+08:00', students: { seat_number: 1 } },
+        { assignment_id: 'assignment-1', student_id: 'student-2', submitted_at: null, students: { seat_number: 2 } },
+      ],
+      exceptions: [],
+    })).toEqual({ 'assignment-1': [2] })
   })
 
   it('作業沒有例外名單時不產生座號標籤', () => {
@@ -359,7 +409,26 @@ describe('作業發布服務', () => {
       p_due_at: new Date('2026-08-11T08:00').toISOString(),
       p_target_type: 'common',
       p_target_group_code: null,
+      p_student_ids: null,
     })
+  })
+
+  it('個別作業只傳送所選學生，且會移除重複值', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { recipientCount: 2 }, error: null })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await publishAssignment({
+      classSubjectId: 'subject-id', academicTermId: 'term-id',
+      assignmentDate: '2026-08-10', content: '個別訂正',
+      dueAt: '2026-08-11T08:00', targetType: 'individual',
+      studentIds: ['student-1', 'student-2', 'student-1'],
+    })
+
+    expect(rpc).toHaveBeenCalledWith('publish_contact_book_assignment', expect.objectContaining({
+      p_target_type: 'individual',
+      p_target_group_code: null,
+      p_student_ids: ['student-1', 'student-2'],
+    }))
   })
 
   it('已有繳交紀錄時會說明組別不可修改', async () => {
@@ -418,7 +487,7 @@ describe('作業繳交確認服務', () => {
         hide_after: null, updated_at: '2026-08-18T08:00:00Z',
       }],
       events: [
-        { id: 'event-2', submission_exception_id: 'exception-id', from_reason: 'leave', to_reason: 'late', from_state: 'open', to_state: 'open', counts_as_missing: false, counts_as_late: true, changed_by: 'teacher-id', created_at: '2026-08-18T08:00:00Z' },
+        { id: 'event-2', submission_exception_id: 'exception-id', from_reason: 'leave', to_reason: 'late', from_state: 'open', to_state: 'open', counts_as_missing: false, counts_as_late: true, changed_by: 'teacher-id', note: 'reset_to_pending', created_at: '2026-08-18T08:00:00Z' },
         { id: 'event-1', submission_exception_id: 'exception-id', from_reason: null, to_reason: 'leave', from_state: null, to_state: 'open', counts_as_missing: false, counts_as_late: false, changed_by: 'helper-id', created_at: '2026-08-10T08:00:00Z' },
       ],
     })
@@ -426,6 +495,7 @@ describe('作業繳交確認服務', () => {
     expect(result.students[0].exception.initialReason).toBe('leave')
     expect(result.students[0].submittedAt).toBe('2026-08-16T08:00:00Z')
     expect(result.students[0].exception.events.map((event) => event.id)).toEqual(['event-1', 'event-2'])
+    expect(result.students[0].exception.events[1].note).toBe('reset_to_pending')
   })
 
   it('只將仍開啟且已到期的請假或公假標為追繳逾期', () => {
@@ -481,10 +551,35 @@ describe('作業繳交確認服務', () => {
       stage: 'teacher',
     })
 
-    expect(rpc).toHaveBeenCalledWith('record_individual_assignment_submission', {
+    expect(rpc).toHaveBeenCalledWith('record_individual_assignment_status', {
       p_assignment_id: 'assignment-id',
       p_student_id: 'student-id',
       p_stage: 'teacher',
+      p_status: 'submitted',
+      p_follow_up_due_at: null,
+    })
+  })
+
+  it('可把單一學生改回尚未繳交，不會傳送其他學生', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { studentId: 'student-id', status: 'pending', openExceptionCount: 0 },
+      error: null,
+    })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await recordIndividualAssignmentStatus({
+      assignmentId: 'assignment-id',
+      studentId: 'student-id',
+      stage: 'teacher',
+      status: 'pending',
+    })
+
+    expect(rpc).toHaveBeenCalledWith('record_individual_assignment_status', {
+      p_assignment_id: 'assignment-id',
+      p_student_id: 'student-id',
+      p_stage: 'teacher',
+      p_status: 'pending',
+      p_follow_up_due_at: null,
     })
   })
 })
