@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildExceptionSummary,
   buildPeriodExceptionSummaries,
+  filterAssignmentRowsForStudent,
   filterAssignmentsForContactDate,
   filterVisibleStudentAssignments,
   getHelperSubjectIds,
@@ -32,6 +33,21 @@ describe('學生聯絡簿資料', () => {
       id: 'assignment-id', targetType: 'group', targetGroupCode: 'B',
       subject: { code: 'math', name: '數學' },
     })
+  })
+
+  it('兼任幹部的學生首頁只保留自己是作業對象的分組作業', () => {
+    const assignmentRows = [
+      { id: 'english-a', target_type: 'group', target_group_code: 'A' },
+      { id: 'english-b', target_type: 'group', target_group_code: 'B' },
+      { id: 'common', target_type: 'common', target_group_code: null },
+    ]
+    const recipientRows = [
+      { assignment_id: 'english-b', submitted_at: null },
+      { assignment_id: 'common', submitted_at: null },
+    ]
+
+    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows).map((item) => item.id))
+      .toEqual(['english-b', 'common'])
   })
 
   it('不同科目的共同或同組作業會合併成同一區塊', () => {
