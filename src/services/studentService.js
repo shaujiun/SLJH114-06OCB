@@ -59,6 +59,13 @@ export function mapStudentAssignmentRow(row) {
   }
 }
 
+export function filterAssignmentRowsForStudent(assignmentRows, recipientRows) {
+  const recipientAssignmentIds = new Set(
+    (recipientRows || []).map((row) => row.assignment_id),
+  )
+  return (assignmentRows || []).filter((row) => recipientAssignmentIds.has(row.id))
+}
+
 export function filterVisibleStudentAssignments(assignments, academicTermId) {
   return (assignments || []).filter((item) => (
     item.academicTermId === academicTermId && !item.submittedAt && !item.isExempt
@@ -311,7 +318,7 @@ export async function loadStudentDashboard() {
       .filter((item) => item.workflowState === 'open' && item.currentReason === 'exempt')
       .map((item) => item.assignmentId),
   )
-  const assignments = assignmentRows.map((row) => ({
+  const assignments = filterAssignmentRowsForStudent(assignmentRows, recipientRows).map((row) => ({
     ...mapStudentAssignmentRow(row),
     submittedAt: submittedAtByAssignmentId.get(row.id) || null,
     isExempt: exemptAssignmentIds.has(row.id),
