@@ -393,6 +393,52 @@ describe('作業發布服務', () => {
     ])
   })
 
+  it('缺交名單只列出截止日為查詢日或更早的作業', () => {
+    expect(buildMissingAssignmentReport([
+      {
+        id: 'earlier', assignmentDate: '2026-09-08', dueAt: '2026-09-09T23:59:00+08:00',
+        content: '早於查詢日', subject: { name: '數學' },
+        pendingStudents: [{ seatNumber: 2 }],
+      },
+      {
+        id: 'same-day', assignmentDate: '2026-09-10', dueAt: '2026-09-10T23:59:00+08:00',
+        content: '查詢日截止', subject: { name: '英語' },
+        pendingStudents: [{ seatNumber: 2 }, { seatNumber: 9 }],
+      },
+      {
+        id: 'issued-today-due-later', assignmentDate: '2026-09-10', dueAt: '2026-09-11T00:00:00+08:00',
+        content: '今日發布但明日截止', subject: { name: '自然' },
+        pendingStudents: [{ seatNumber: 3 }],
+      },
+      {
+        id: 'older-due-later', assignmentDate: '2026-09-08', dueAt: '2026-09-11T08:00:00+08:00',
+        content: '早於今日發布但未到期', subject: { name: '國文' },
+        pendingStudents: [{ seatNumber: 4 }],
+      },
+      {
+        id: 'missing-due-date', assignmentDate: '2026-09-08', dueAt: '',
+        content: '無法確認截止日', subject: { name: '社會' },
+        pendingStudents: [{ seatNumber: 5 }],
+      },
+    ], '2026-09-10')).toEqual([
+      {
+        seatNumber: 2,
+        assignments: [
+          { id: 'same-day', assignmentDate: '2026-09-10', subjectName: '英語', content: '查詢日截止' },
+          { id: 'earlier', assignmentDate: '2026-09-08', subjectName: '數學', content: '早於查詢日' },
+        ],
+        missingCount: 2,
+      },
+      {
+        seatNumber: 9,
+        assignments: [
+          { id: 'same-day', assignmentDate: '2026-09-10', subjectName: '英語', content: '查詢日截止' },
+        ],
+        missingCount: 1,
+      },
+    ])
+  })
+
   it('共同作業不傳分組代碼', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { recipientCount: 2 }, error: null })
     requireSupabase.mockReturnValue({ rpc })
