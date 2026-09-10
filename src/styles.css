@@ -2473,7 +2473,7 @@ footer {
 
 .assignment-missing-report table {
   width: 100%;
-  min-width: 680px;
+  min-width: 620px;
   border-collapse: collapse;
   background: #fffdf8;
 }
@@ -2498,14 +2498,49 @@ footer {
 }
 
 .assignment-missing-report td:first-child {
-  width: 145px;
+  width: 120px;
+  white-space: nowrap;
+}
+
+.assignment-missing-report td:first-child > strong {
+  display: block;
+  color: #8b3e2e;
+  font-size: 1.1rem;
+}
+
+.assignment-missing-report td:first-child > small {
+  display: block;
+  margin-top: 3px;
+  color: #75695c;
+}
+
+.assignment-missing-person-items {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assignment-missing-person-items li {
+  display: grid;
+  grid-template-columns: 145px max-content minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.assignment-missing-person-items li + li {
+  padding-top: 10px;
+  border-top: 1px dashed #ddccb0;
+}
+
+.assignment-missing-person-items time {
   font-weight: 800;
   white-space: nowrap;
 }
 
-.assignment-missing-report td:nth-child(2) span {
+.assignment-missing-person-items span {
   display: inline-flex;
-  margin-right: 8px;
   padding: 3px 8px;
   color: #276155;
   background: #e2f4ec;
@@ -2514,24 +2549,8 @@ footer {
   font-weight: 900;
 }
 
-.assignment-missing-report td:nth-child(2) strong {
+.assignment-missing-person-items strong {
   overflow-wrap: anywhere;
-}
-
-.assignment-missing-report td:last-child {
-  width: 230px;
-}
-
-.assignment-missing-report td:last-child > strong {
-  display: block;
-  color: #8b3e2e;
-  font-size: 1.05rem;
-}
-
-.assignment-missing-report td:last-child > small {
-  display: block;
-  margin-top: 3px;
-  color: #75695c;
 }
 
 .assignment-missing-report-empty {
@@ -5350,6 +5369,7 @@ footer {
   .assignment-missing-report td:first-child,
   .assignment-missing-report td:last-child {
     display: grid;
+    width: 100%;
     grid-template-columns: 86px minmax(0, 1fr);
     gap: 8px;
     padding: 6px 0;
@@ -5364,23 +5384,23 @@ footer {
     font-weight: 900;
   }
 
-  .assignment-missing-report td:nth-child(2) span {
+  .assignment-missing-report td:first-child > strong,
+  .assignment-missing-report td:first-child > small,
+  .assignment-missing-report td:last-child > .assignment-missing-person-items {
     grid-column: 2;
+  }
+
+  .assignment-missing-person-items li {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 5px 8px;
+  }
+
+  .assignment-missing-person-items span {
     width: fit-content;
-    margin: 0;
   }
 
-  .assignment-missing-report td:nth-child(2) strong {
-    grid-column: 2;
-  }
-
-  .assignment-missing-report td:last-child > strong,
-  .assignment-missing-report td:last-child > small {
-    grid-column: 2;
-  }
-
-  .assignment-missing-report td:last-child > small {
-    margin-top: -4px;
+  .assignment-missing-person-items strong {
+    grid-column: 1 / -1;
   }
 
   .student-helper-launch {

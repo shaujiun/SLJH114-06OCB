@@ -183,13 +183,13 @@ export default function AssignmentManagement({
       : assignments,
     [assignments, filterByOutstandingDate, selectedAssignmentDate],
   )
-  const missingAssignmentRows = useMemo(
+  const missingStudentRows = useMemo(
     () => buildMissingAssignmentReport(assignments),
     [assignments],
   )
   const missingSubmissionCount = useMemo(
-    () => missingAssignmentRows.reduce((total, assignment) => total + assignment.missingCount, 0),
-    [missingAssignmentRows],
+    () => missingStudentRows.reduce((total, student) => total + student.missingCount, 0),
+    [missingStudentRows],
   )
 
   const load = useCallback(async () => {
@@ -519,7 +519,7 @@ export default function AssignmentManagement({
       <div className="student-page-heading">
         <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '可發布共同、分組或個別學生作業；發布後會保存當時的作業對象。'}</p></div>
         {(allowAssignmentBoard || allowPreviousDayBoard || !hideTermPicker || !isHelperMode) && <div className="assignment-heading-actions">
-          {!isHelperMode && <button className="assignment-board-launch is-missing-report" type="button" aria-expanded={showMissingReport} aria-controls="all-missing-assignment-report" onClick={() => setShowMissingReport((current) => !current)}><ListChecks aria-hidden="true" />{showMissingReport ? '收合缺交名單' : '全部缺交名單'}</button>}
+          {!isHelperMode && <button className="assignment-board-launch is-missing-report" type="button" aria-expanded={showMissingReport} aria-controls="all-missing-assignment-report" onClick={() => setShowMissingReport((current) => !current)}><ListChecks aria-hidden="true" />{showMissingReport ? '收合缺交名單' : '按座號看缺交'}</button>}
           {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={openAssignmentBoard}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
           {allowPreviousDayBoard && <button className="assignment-board-launch is-previous-day" type="button" onClick={openPreviousDayBoard}><CalendarSearch aria-hidden="true" />前一日聯絡簿</button>}
           {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
@@ -530,21 +530,24 @@ export default function AssignmentManagement({
         <div className="assignment-missing-report-heading">
           <div>
             <p className="eyebrow">MISSING ASSIGNMENTS</p>
-            <h3 id="all-missing-assignment-report-title">全部作業缺交名單</h3>
-            <p>第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
+            <h3 id="all-missing-assignment-report-title">個人缺交名單</h3>
+            <p>依座號由小到大顯示・第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
           </div>
-          <strong>{missingAssignmentRows.length} 筆作業・{missingSubmissionCount} 人次</strong>
+          <strong>{missingStudentRows.length} 位學生・{missingSubmissionCount} 筆缺交</strong>
         </div>
         {loading ? (
           <div className="assignment-missing-report-empty"><RefreshCw className="is-spinning" />整理缺交名單中…</div>
-        ) : missingAssignmentRows.length ? (
+        ) : missingStudentRows.length ? (
           <div className="assignment-missing-report-table-wrap">
             <table>
-              <thead><tr><th scope="col">日期</th><th scope="col">作業名稱</th><th scope="col">缺交座號</th></tr></thead>
-              <tbody>{missingAssignmentRows.map((assignment) => <tr key={assignment.id}>
-                <td data-label="日期">{formatAssignmentDate(assignment.assignmentDate)}</td>
-                <td data-label="作業名稱"><span>{assignment.subjectName}</span><strong>{assignment.content}</strong></td>
-                <td data-label="缺交座號">{assignment.seatNumbers.length ? <strong>{assignment.seatNumbers.join('、')} 號</strong> : <strong>座號資料未完整</strong>}<small>{assignment.missingCount} 人</small></td>
+              <thead><tr><th scope="col">座號</th><th scope="col">缺交作業</th></tr></thead>
+              <tbody>{missingStudentRows.map((student) => <tr key={student.seatNumber}>
+                <td data-label="座號"><strong>{student.seatNumber} 號</strong><small>{student.missingCount} 筆</small></td>
+                <td data-label="缺交作業"><ul className="assignment-missing-person-items">{student.assignments.map((assignment) => <li key={assignment.id}>
+                  <time dateTime={assignment.assignmentDate}>{formatAssignmentDate(assignment.assignmentDate)}</time>
+                  <span>{assignment.subjectName}</span>
+                  <strong>{assignment.content}</strong>
+                </li>)}</ul></td>
               </tr>)}</tbody>
             </table>
           </div>
