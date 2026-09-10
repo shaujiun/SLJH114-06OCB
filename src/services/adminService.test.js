@@ -3,6 +3,7 @@ import { requireSupabase } from '../lib/supabase.js'
 import {
   addClassSubject,
   approveTeacher,
+  buildMissingAssignmentReport,
   cancelAssignment,
   createStudentPasswordReset,
   createStudent,
@@ -341,6 +342,34 @@ describe('作業發布服務', () => {
       assignmentDate: '2026-08-10',
       publishedAt: '2026-08-12T09:00:00+08:00',
     })).toBe('2026-08-10')
+  })
+
+  it('一鍵缺交名單依作業日期倒序整理作業名稱與缺交座號', () => {
+    expect(buildMissingAssignmentReport([
+      {
+        id: 'older-math', assignmentDate: '2026-09-08', content: '習作第 12 頁',
+        subject: { name: '數學' }, pendingRecipientCount: 2,
+        pendingStudents: [{ seatNumber: 9 }, { seatNumber: 2 }, { seatNumber: 9 }],
+      },
+      {
+        id: 'complete', assignmentDate: '2026-09-10', content: '已完成作業',
+        subject: { name: '英語' }, pendingRecipientCount: 0, pendingStudents: [],
+      },
+      {
+        id: 'newer-english', assignmentDate: '2026-09-10', content: '單字訂正',
+        subject: { name: '英語' }, pendingRecipientCount: 2,
+        pendingStudents: [{ seatNumber: 15 }, { seatNumber: 3 }],
+      },
+    ])).toEqual([
+      {
+        id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語',
+        content: '單字訂正', seatNumbers: [3, 15], missingCount: 2,
+      },
+      {
+        id: 'older-math', assignmentDate: '2026-09-08', subjectName: '數學',
+        content: '習作第 12 頁', seatNumbers: [2, 9], missingCount: 2,
+      },
+    ])
   })
 
   it('共同作業不傳分組代碼', async () => {

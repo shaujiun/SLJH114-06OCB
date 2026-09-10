@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, MonitorUp, Pencil, Plus, RefreshCw, RotateCcw, Save, Send, UserRoundCheck, X } from 'lucide-react'
+import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, ListChecks, MonitorUp, Pencil, Plus, RefreshCw, RotateCcw, Save, Send, UserRoundCheck, X } from 'lucide-react'
 import {
+  buildMissingAssignmentReport,
   cancelAssignment,
   filterAssignmentsByDate,
   getOutstandingAssignmentDates,
@@ -144,6 +145,7 @@ export default function AssignmentManagement({
   const [editSaving, setEditSaving] = useState(false)
   const [showCancelledAssignments, setShowCancelledAssignments] = useState(false)
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
+  const [showMissingReport, setShowMissingReport] = useState(false)
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
   const [boardAssignments, setBoardAssignments] = useState([])
@@ -180,6 +182,14 @@ export default function AssignmentManagement({
       ? filterAssignmentsByDate(assignments, selectedAssignmentDate)
       : assignments,
     [assignments, filterByOutstandingDate, selectedAssignmentDate],
+  )
+  const missingAssignmentRows = useMemo(
+    () => buildMissingAssignmentReport(assignments),
+    [assignments],
+  )
+  const missingSubmissionCount = useMemo(
+    () => missingAssignmentRows.reduce((total, assignment) => total + assignment.missingCount, 0),
+    [missingAssignmentRows],
   )
 
   const load = useCallback(async () => {
@@ -238,6 +248,7 @@ export default function AssignmentManagement({
 
   function changeTerm(nextTermId) {
     setTermId(nextTermId)
+    setShowMissingReport(false)
     setNotice(null)
   }
 
@@ -507,13 +518,40 @@ export default function AssignmentManagement({
     <section className="assignment-management">
       <div className="student-page-heading">
         <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '可發布共同、分組或個別學生作業；發布後會保存當時的作業對象。'}</p></div>
-        {(allowAssignmentBoard || allowPreviousDayBoard || !hideTermPicker) && <div className="assignment-heading-actions">
+        {(allowAssignmentBoard || allowPreviousDayBoard || !hideTermPicker || !isHelperMode) && <div className="assignment-heading-actions">
+          {!isHelperMode && <button className="assignment-board-launch is-missing-report" type="button" aria-expanded={showMissingReport} aria-controls="all-missing-assignment-report" onClick={() => setShowMissingReport((current) => !current)}><ListChecks aria-hidden="true" />{showMissingReport ? '收合缺交名單' : '全部缺交名單'}</button>}
           {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={openAssignmentBoard}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
           {allowPreviousDayBoard && <button className="assignment-board-launch is-previous-day" type="button" onClick={openPreviousDayBoard}><CalendarSearch aria-hidden="true" />前一日聯絡簿</button>}
           {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
         </div>}
       </div>
       {notice && <div className={`admin-notice is-${notice.type}`}>{notice.message}</div>}
+      {!isHelperMode && showMissingReport && <section className="assignment-missing-report" id="all-missing-assignment-report" aria-labelledby="all-missing-assignment-report-title">
+        <div className="assignment-missing-report-heading">
+          <div>
+            <p className="eyebrow">MISSING ASSIGNMENTS</p>
+            <h3 id="all-missing-assignment-report-title">全部作業缺交名單</h3>
+            <p>第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
+          </div>
+          <strong>{missingAssignmentRows.length} 筆作業・{missingSubmissionCount} 人次</strong>
+        </div>
+        {loading ? (
+          <div className="assignment-missing-report-empty"><RefreshCw className="is-spinning" />整理缺交名單中…</div>
+        ) : missingAssignmentRows.length ? (
+          <div className="assignment-missing-report-table-wrap">
+            <table>
+              <thead><tr><th scope="col">日期</th><th scope="col">作業名稱</th><th scope="col">缺交座號</th></tr></thead>
+              <tbody>{missingAssignmentRows.map((assignment) => <tr key={assignment.id}>
+                <td data-label="日期">{formatAssignmentDate(assignment.assignmentDate)}</td>
+                <td data-label="作業名稱"><span>{assignment.subjectName}</span><strong>{assignment.content}</strong></td>
+                <td data-label="缺交座號">{assignment.seatNumbers.length ? <strong>{assignment.seatNumbers.join('、')} 號</strong> : <strong>座號資料未完整</strong>}<small>{assignment.missingCount} 人</small></td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="assignment-missing-report-empty"><CheckCheck aria-hidden="true" /><strong>目前沒有缺交作業</strong><span>所有已登記作業都已完成繳交。</span></div>
+        )}
+      </section>}
       {allowQuizReminders && termId && (
         <DailyQuizReminderManagement
           classId={dashboard.classInfo.id}
