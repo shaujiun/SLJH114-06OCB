@@ -344,7 +344,7 @@ describe('作業發布服務', () => {
     })).toBe('2026-08-10')
   })
 
-  it('一鍵缺交名單依作業日期倒序整理作業名稱與缺交座號', () => {
+  it('一鍵缺交名單依座號整理每位學生的所有缺交作業', () => {
     expect(buildMissingAssignmentReport([
       {
         id: 'older-math', assignmentDate: '2026-09-08', content: '習作第 12 頁',
@@ -357,17 +357,38 @@ describe('作業發布服務', () => {
       },
       {
         id: 'newer-english', assignmentDate: '2026-09-10', content: '單字訂正',
-        subject: { name: '英語' }, pendingRecipientCount: 2,
-        pendingStudents: [{ seatNumber: 15 }, { seatNumber: 3 }],
+        subject: { name: '英語' }, pendingRecipientCount: 3,
+        pendingStudents: [{ seatNumber: 15 }, { seatNumber: 9 }, { seatNumber: 3 }],
       },
     ])).toEqual([
       {
-        id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語',
-        content: '單字訂正', seatNumbers: [3, 15], missingCount: 2,
+        seatNumber: 2,
+        assignments: [{
+          id: 'older-math', assignmentDate: '2026-09-08', subjectName: '數學', content: '習作第 12 頁',
+        }],
+        missingCount: 1,
       },
       {
-        id: 'older-math', assignmentDate: '2026-09-08', subjectName: '數學',
-        content: '習作第 12 頁', seatNumbers: [2, 9], missingCount: 2,
+        seatNumber: 3,
+        assignments: [{
+          id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語', content: '單字訂正',
+        }],
+        missingCount: 1,
+      },
+      {
+        seatNumber: 9,
+        assignments: [
+          { id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語', content: '單字訂正' },
+          { id: 'older-math', assignmentDate: '2026-09-08', subjectName: '數學', content: '習作第 12 頁' },
+        ],
+        missingCount: 2,
+      },
+      {
+        seatNumber: 15,
+        assignments: [{
+          id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語', content: '單字訂正',
+        }],
+        missingCount: 1,
       },
     ])
   })

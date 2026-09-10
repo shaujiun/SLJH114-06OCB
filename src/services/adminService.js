@@ -576,30 +576,40 @@ export function filterAssignmentsByDate(assignments, assignmentDate) {
 }
 
 export function buildMissingAssignmentReport(assignments = []) {
-  return (assignments || [])
-    .map((assignment) => {
-      const seatNumbers = [...new Set((assignment.pendingStudents || [])
-        .map((student) => Number(student.seatNumber))
-        .filter(Number.isFinite))]
-        .sort((left, right) => left - right)
-      const missingCount = Math.max(Number(assignment.pendingRecipientCount) || 0, seatNumbers.length)
-      if (missingCount === 0) return null
+  const studentsBySeat = new Map()
 
-      return {
-        id: assignment.id,
-        assignmentDate: assignment.assignmentDate || '',
-        subjectName: assignment.subject?.name || '未設定科目',
-        content: assignment.content || '未命名作業',
-        seatNumbers,
-        missingCount,
+  for (const assignment of assignments || []) {
+    const assignmentSummary = {
+      id: assignment.id,
+      assignmentDate: assignment.assignmentDate || '',
+      subjectName: assignment.subject?.name || '未設定科目',
+      content: assignment.content || '未命名作業',
+    }
+    const seatNumbers = [...new Set((assignment.pendingStudents || [])
+      .map((student) => Number(student.seatNumber))
+      .filter((seatNumber) => Number.isInteger(seatNumber) && seatNumber > 0))]
+
+    seatNumbers.forEach((seatNumber) => {
+      const student = studentsBySeat.get(seatNumber) || {
+        seatNumber,
+        assignments: [],
       }
+      student.assignments.push(assignmentSummary)
+      studentsBySeat.set(seatNumber, student)
     })
-    .filter(Boolean)
-    .sort((left, right) => (
-      right.assignmentDate.localeCompare(left.assignmentDate)
-      || left.subjectName.localeCompare(right.subjectName, 'zh-Hant')
-      || left.content.localeCompare(right.content, 'zh-Hant')
-    ))
+  }
+
+  return [...studentsBySeat.values()]
+    .map((student) => ({
+      ...student,
+      assignments: student.assignments.sort((left, right) => (
+        right.assignmentDate.localeCompare(left.assignmentDate)
+        || left.subjectName.localeCompare(right.subjectName, 'zh-Hant')
+        || left.content.localeCompare(right.content, 'zh-Hant')
+      )),
+      missingCount: student.assignments.length,
+    }))
+    .sort((left, right) => left.seatNumber - right.seatNumber)
 }
 
 export function sortAssignmentsByTarget(assignments) {
