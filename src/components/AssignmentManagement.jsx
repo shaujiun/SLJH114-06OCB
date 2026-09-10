@@ -184,8 +184,8 @@ export default function AssignmentManagement({
     [assignments, filterByOutstandingDate, selectedAssignmentDate],
   )
   const missingStudentRows = useMemo(
-    () => buildMissingAssignmentReport(assignments),
-    [assignments],
+    () => buildMissingAssignmentReport(assignments, today),
+    [assignments, today],
   )
   const missingSubmissionCount = useMemo(
     () => missingStudentRows.reduce((total, student) => total + student.missingCount, 0),
@@ -531,7 +531,7 @@ export default function AssignmentManagement({
           <div>
             <p className="eyebrow">MISSING ASSIGNMENTS</p>
             <h3 id="all-missing-assignment-report-title">個人缺交名單</h3>
-            <p>依座號由小到大顯示・第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
+            <p>只列截止日為今日或之前・依座號由小到大顯示・第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
           </div>
           <strong>{missingStudentRows.length} 位學生・{missingSubmissionCount} 筆缺交</strong>
         </div>

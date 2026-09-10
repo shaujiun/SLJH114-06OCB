@@ -575,10 +575,30 @@ export function filterAssignmentsByDate(assignments, assignmentDate) {
   return (assignments || []).filter((assignment) => getAssignmentDate(assignment) === assignmentDate)
 }
 
-export function buildMissingAssignmentReport(assignments = []) {
+const taipeiDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Taipei',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+function taipeiCalendarDate(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = Object.fromEntries(
+    taipeiDateFormatter.formatToParts(date).map((part) => [part.type, part.value]),
+  )
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+export function buildMissingAssignmentReport(assignments = [], referenceDate = '') {
   const studentsBySeat = new Map()
 
   for (const assignment of assignments || []) {
+    if (referenceDate) {
+      const dueDate = taipeiCalendarDate(assignment.dueAt)
+      if (!dueDate || dueDate > referenceDate) continue
+    }
     const assignmentSummary = {
       id: assignment.id,
       assignmentDate: assignment.assignmentDate || '',
