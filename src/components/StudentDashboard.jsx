@@ -34,6 +34,11 @@ import {
   quizReminderDisplayText,
 } from '../services/quizReminderService.js'
 import { markAnnouncementRead } from '../services/announcementService.js'
+import {
+  announcementMonthOptions,
+  announcementPreview,
+  announcementsForMonth,
+} from '../lib/studentAnnouncementView.js'
 import StudentHelperWorkspace from './StudentHelperWorkspace.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
 import StudentGrades from './StudentGrades.jsx'
@@ -52,6 +57,14 @@ const reasonLabels = {
 function formatDateTime(value) {
   if (!value) return '尚未設定'
   return new Intl.DateTimeFormat('zh-TW', {
+    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function formatAnnouncementDateTime(value) {
+  if (!value) return '尚未設定'
+  return new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
   }).format(new Date(value))
 }
@@ -126,24 +139,36 @@ function AssignmentGroupCard({ group, exceptionsByAssignment }) {
   )
 }
 
-function StudentAnnouncementCard({ announcement, reading, onRead }) {
+export function StudentAnnouncementCard({ announcement, reading, onRead }) {
+  const preview = announcementPreview(announcement.content)
   return (
-    <article className={`student-announcement-card ${announcement.readAt ? 'is-read' : 'is-unread'}`}>
-      {announcement.imageUrl && <img src={announcement.imageUrl} alt={announcement.imageAltText} />}
-      {announcement.imageError && <p className="private-image-error">{announcement.imageError}</p>}
-      <div className="student-announcement-body">
-        <div className="student-announcement-topline">
+    <details className={`student-announcement-card ${announcement.readAt ? 'is-read' : 'is-unread'}`}>
+      <summary className="student-announcement-summary">
+        <span className="student-announcement-topline">
           <span className={`announcement-scope is-${announcement.scope}`}>{announcement.scope === 'school' ? '全校公告' : '班級公告'}</span>
-          <span>{formatDateTime(announcement.publishedAt)}</span>
-        </div>
-        <h3>{announcement.title}</h3>
+          <span>{formatAnnouncementDateTime(announcement.publishedAt)}</span>
+        </span>
+        <strong className="student-announcement-title">{announcement.title}</strong>
+        <span className="student-announcement-excerpt">{preview || '點開查看公告內容與圖片。'}</span>
+        <span className="student-announcement-summary-footer">
+          <span className={announcement.readAt ? 'is-read' : 'is-unread'}>{announcement.readAt ? '已閱讀' : '未讀'}</span>
+          <span className="student-announcement-open-label">
+            <span className="when-closed">點開看全文</span>
+            <span className="when-open">收起全文</span>
+            <ChevronRight aria-hidden="true" />
+          </span>
+        </span>
+      </summary>
+      <div className="student-announcement-body">
+        {announcement.imageUrl && <img src={announcement.imageUrl} alt={announcement.imageAltText} loading="lazy" />}
+        {announcement.imageError && <p className="private-image-error">{announcement.imageError}</p>}
         {announcement.content && <p>{announcement.content}</p>}
-        {announcement.expiresAt && <small>顯示至：{formatDateTime(announcement.expiresAt)}</small>}
+        {announcement.expiresAt && <small>顯示至：{formatAnnouncementDateTime(announcement.expiresAt)}</small>}
         {announcement.readAt
           ? <span className="student-announcement-read"><CheckCircle2 />已閱讀</span>
           : <button type="button" disabled={reading} onClick={() => onRead(announcement)}><Eye />{reading ? '儲存中…' : '我已閱讀'}</button>}
       </div>
-    </article>
+    </details>
   )
 }
 
@@ -153,6 +178,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [readingAnnouncementId, setReadingAnnouncementId] = useState('')
+  const [announcementMonth, setAnnouncementMonth] = useState('all')
   const [activeView, setActiveView] = useState('home')
   const [contactDate, setContactDate] = useState(localDateString())
   const [notice, setNotice] = useState(null)
@@ -224,6 +250,20 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     }),
     [dashboard, termId],
   )
+  const availableAnnouncementMonths = useMemo(
+    () => announcementMonthOptions(dashboard?.announcements),
+    [dashboard?.announcements],
+  )
+  const visibleAnnouncements = useMemo(
+    () => announcementsForMonth(dashboard?.announcements, announcementMonth),
+    [dashboard?.announcements, announcementMonth],
+  )
+  useEffect(() => {
+    if (announcementMonth !== 'all'
+      && !availableAnnouncementMonths.some((month) => month.value === announcementMonth)) {
+      setAnnouncementMonth('all')
+    }
+  }, [announcementMonth, availableAnnouncementMonths])
   const visibleExceptions = useMemo(
     () => exceptionSummary.visible.filter((item) => {
       const assignment = dashboard?.assignments.find((row) => row.id === item.assignmentId)
@@ -295,11 +335,19 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
           <section className="student-home-panel student-announcements-panel">
             <div className="student-home-panel-heading">
               <div><span><Megaphone /></span><div><h2>公告欄</h2><p>全校與班級的最新消息</p></div></div>
-              <strong>{dashboard.announcements.filter((item) => !item.readAt).length} 則未讀</strong>
+              <strong>全部公告有 {dashboard.announcements.filter((item) => !item.readAt).length} 則未讀</strong>
             </div>
+            {dashboard.announcements.length > 0 && <label className="student-announcement-month-filter">
+              <span>選擇月份</span>
+              <select value={announcementMonth} onChange={(event) => setAnnouncementMonth(event.target.value)}>
+                <option value="all">全部月份</option>
+                {availableAnnouncementMonths.map((month) => <option value={month.value} key={month.value}>{month.label}</option>)}
+              </select>
+            </label>}
             {!dashboard.announcements.length && <div className="student-home-empty is-small"><CheckCircle2 /><strong>目前沒有新公告</strong></div>}
+            {dashboard.announcements.length > 0 && !visibleAnnouncements.length && <div className="student-home-empty is-small"><Megaphone /><strong>這個月份沒有公告</strong><span>請改選其他月份。</span></div>}
             <div className="student-announcement-list">
-              {dashboard.announcements.map((announcement) => (
+              {visibleAnnouncements.map((announcement) => (
                 <StudentAnnouncementCard
                   key={announcement.id}
                   announcement={announcement}

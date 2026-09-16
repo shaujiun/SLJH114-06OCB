@@ -4364,6 +4364,27 @@ footer {
   margin-top: 15px;
 }
 
+.student-announcement-month-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 15px;
+  font-weight: 900;
+}
+
+.student-announcement-month-filter select {
+  min-width: 165px;
+  min-height: 44px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: #fffdf8;
+  border: 1.5px solid #aaa196;
+  border-radius: 10px;
+  font: inherit;
+}
+
 .student-announcement-card {
   min-width: 0;
   overflow: hidden;
@@ -4377,19 +4398,99 @@ footer {
   box-shadow: 4px 5px 0 #d9cef8;
 }
 
-.student-announcement-card > img {
+.student-announcement-summary {
+  display: grid;
+  gap: 9px;
+  padding: 15px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.student-announcement-summary::-webkit-details-marker {
+  display: none;
+}
+
+.student-announcement-summary::marker {
+  content: '';
+}
+
+.student-announcement-summary:focus-visible,
+.student-announcement-month-filter select:focus-visible {
+  outline: 3px solid #6f5ac7;
+  outline-offset: 2px;
+}
+
+.student-announcement-title {
+  overflow-wrap: anywhere;
+  font-size: 1.08rem;
+}
+
+.student-announcement-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #555d59;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.student-announcement-summary-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.89rem;
+  font-weight: 900;
+}
+
+.student-announcement-summary-footer > .is-unread {
+  color: #51409e;
+}
+
+.student-announcement-summary-footer > .is-read {
+  color: #28715e;
+}
+
+.student-announcement-open-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #51409e;
+}
+
+.student-announcement-open-label svg {
+  width: 17px;
+  transition: transform 150ms ease;
+}
+
+.student-announcement-open-label .when-open,
+.student-announcement-card[open] .student-announcement-open-label .when-closed {
+  display: none;
+}
+
+.student-announcement-card[open] .student-announcement-open-label .when-open {
+  display: inline;
+}
+
+.student-announcement-card[open] .student-announcement-open-label svg {
+  transform: rotate(90deg);
+}
+
+.student-announcement-body > img {
   display: block;
   width: 100%;
   max-height: 320px;
   object-fit: contain;
   background: #eee9df;
-  border-bottom: 1px solid #ddd5c8;
+  border-radius: 9px;
 }
 
 .student-announcement-body {
   display: grid;
   gap: 9px;
   padding: 15px;
+  border-top: 1px solid #ddd5c8;
 }
 
 .student-announcement-topline {
