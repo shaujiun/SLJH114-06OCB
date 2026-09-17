@@ -39,3 +39,13 @@ export function announcementsForMonth(announcements = [], month = 'all') {
     ? announcements
     : announcements.filter((item) => announcementMonthKey(item.publishedAt) === month)
 }
+
+export function paginateStudentMessages(items = [], requestedPage = 1) {
+  const totalPages = Math.max(1, Math.ceil(items.length / 10))
+  const page = Math.min(Math.max(1, Math.trunc(Number(requestedPage)) || 1), totalPages)
+  return {
+    items: items.slice((page - 1) * 10, page * 10),
+    page,
+    totalPages,
+  }
+}
