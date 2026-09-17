@@ -4,6 +4,7 @@ import {
   announcementMonthOptions,
   announcementPreview,
   announcementsForMonth,
+  paginateStudentMessages,
 } from './studentAnnouncementView.js'
 
 describe('學生公告欄月份與摘要', () => {
@@ -28,5 +29,14 @@ describe('學生公告欄月份與摘要', () => {
     expect(announcementPreview('第一句。第二句！第三句。')).toBe('第一句。第二句！…')
     expect(announcementPreview('甲'.repeat(110))).toBe(`${'甲'.repeat(96)}…`)
     expect(announcementPreview('')).toBe('')
+  })
+
+  it('每頁最多十則，較舊的訊息從第二頁開始', () => {
+    const items = Array.from({ length: 21 }, (_, index) => ({ id: index + 1 }))
+    expect(paginateStudentMessages(items, 1).items.map((item) => item.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    expect(paginateStudentMessages(items, 2).items.map((item) => item.id)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
+    expect(paginateStudentMessages(items, 3).items.map((item) => item.id)).toEqual([21])
+    expect(paginateStudentMessages(items, 9)).toMatchObject({ page: 3, totalPages: 3 })
+    expect(paginateStudentMessages([])).toEqual({ items: [], page: 1, totalPages: 1 })
   })
 })

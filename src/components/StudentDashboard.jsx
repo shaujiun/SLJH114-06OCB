@@ -38,6 +38,7 @@ import {
   announcementMonthOptions,
   announcementPreview,
   announcementsForMonth,
+  paginateStudentMessages,
 } from '../lib/studentAnnouncementView.js'
 import StudentHelperWorkspace from './StudentHelperWorkspace.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
@@ -172,6 +173,17 @@ export function StudentAnnouncementCard({ announcement, reading, onRead }) {
   )
 }
 
+function StudentMessagePagination({ label, page, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null
+  return (
+    <nav className="student-message-pagination" aria-label={`${label}分頁`}>
+      <button type="button" disabled={page === 1} onClick={() => onPageChange(page - 1)}>上一頁</button>
+      <span aria-live="polite">第 {page} 頁／共 {totalPages} 頁</span>
+      <button type="button" disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>下一頁</button>
+    </nav>
+  )
+}
+
 export default function StudentDashboard({ onExit, learningSystemUrl }) {
   const [dashboard, setDashboard] = useState(null)
   const [termId, setTermId] = useState('')
@@ -179,6 +191,9 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
   const [refreshing, setRefreshing] = useState(false)
   const [readingAnnouncementId, setReadingAnnouncementId] = useState('')
   const [announcementMonth, setAnnouncementMonth] = useState('all')
+  const [announcementSection, setAnnouncementSection] = useState(null)
+  const [announcementPage, setAnnouncementPage] = useState(1)
+  const [honorPage, setHonorPage] = useState(1)
   const [activeView, setActiveView] = useState('home')
   const [contactDate, setContactDate] = useState(localDateString())
   const [notice, setNotice] = useState(null)
@@ -190,6 +205,8 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     try {
       const data = await loadStudentDashboard()
       setDashboard(data)
+      setAnnouncementPage(1)
+      setHonorPage(1)
       setTermId((current) => current || data.defaultTermId)
       if (!data.helperAssignments.length) {
         setActiveView((current) => current === 'helper' ? 'home' : current)
@@ -258,6 +275,14 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     () => announcementsForMonth(dashboard?.announcements, announcementMonth),
     [dashboard?.announcements, announcementMonth],
   )
+  const announcementPagination = useMemo(
+    () => paginateStudentMessages(visibleAnnouncements, announcementPage),
+    [visibleAnnouncements, announcementPage],
+  )
+  const honorPagination = useMemo(
+    () => paginateStudentMessages(dashboard?.honors, honorPage),
+    [dashboard?.honors, honorPage],
+  )
   useEffect(() => {
     if (announcementMonth !== 'all'
       && !availableAnnouncementMonths.some((month) => month.value === announcementMonth)) {
@@ -317,7 +342,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     <div className="student-home-shell">
       <header className="student-home-header">
         <div className="student-home-brand"><span><BookOpen /></span><div><strong>八年六班</strong><small>線上聯絡簿</small></div></div>
-        {activeView !== 'helper' && <nav className="student-view-tabs" aria-label="學生功能切換"><button className={activeView === 'home' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('home'); setNotice(null) }}><BookOpen />聯絡簿</button><button className={activeView === 'announcements' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('announcements'); setNotice(null) }}><Megaphone />公告欄</button><button className={activeView === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('calendar'); setNotice(null) }}><CalendarRange />班級行事曆</button><button className={activeView === 'grades' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('grades'); setNotice(null) }}><BarChart3 />個人成績</button><button className={activeView === 'learning' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('learning'); setNotice(null) }}><BookOpenText />學習資源</button></nav>}
+        {activeView !== 'helper' && <nav className="student-view-tabs" aria-label="學生功能切換"><button className={activeView === 'home' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('home'); setNotice(null) }}><BookOpen />聯絡簿</button><button className={activeView === 'announcements' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('announcements'); setAnnouncementSection(null); setNotice(null) }}><Megaphone />公告欄</button><button className={activeView === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('calendar'); setNotice(null) }}><CalendarRange />班級行事曆</button><button className={activeView === 'grades' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('grades'); setNotice(null) }}><BarChart3 />個人成績</button><button className={activeView === 'learning' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('learning'); setNotice(null) }}><BookOpenText />學習資源</button></nav>}
         <div className="student-home-actions">
           {hasHelperRole && activeView === 'home' && <button type="button" className="student-helper-launch" onClick={() => setActiveView('helper')}><ClipboardPenLine />幹部工作區</button>}
           <button type="button" className="student-refresh-button" aria-label="重新整理" onClick={() => load({ quiet: true })}><RefreshCw className={refreshing ? 'is-spinning' : ''} /></button>
@@ -332,14 +357,23 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
         {activeView === 'grades' && <StudentGrades studentId={dashboard.student.id} classId={dashboard.classInfo.id} />}
         {activeView === 'learning' && <LearningResources classId={dashboard.classInfo.id} />}
         {activeView === 'announcements' && <div className="student-announcement-view">
-          <section className="student-home-panel student-announcements-panel">
+          <section className="student-home-panel student-announcement-choice" aria-label="公告欄分類">
+            <h1>公告欄</h1>
+            <div className="student-announcement-section-buttons">
+              <button type="button" className={announcementSection === 'notices' ? 'is-active' : ''} aria-pressed={announcementSection === 'notices'} onClick={() => { setAnnouncementSection('notices'); setAnnouncementPage(1) }}><Megaphone />公告事項<span>{dashboard.announcements.filter((item) => !item.readAt).length} 則未讀</span></button>
+              <button type="button" className={announcementSection === 'honors' ? 'is-active' : ''} aria-pressed={announcementSection === 'honors'} onClick={() => { setAnnouncementSection('honors'); setHonorPage(1) }}><Trophy />榮譽榜<span>{dashboard.honors.length} 則</span></button>
+            </div>
+            {!announcementSection && <p className="student-announcement-choice-hint">請選擇要查看的內容。</p>}
+          </section>
+
+          {announcementSection === 'notices' && <section className="student-home-panel student-announcements-panel">
             <div className="student-home-panel-heading">
-              <div><span><Megaphone /></span><div><h2>公告欄</h2><p>全校與班級的最新消息</p></div></div>
+              <div><span><Megaphone /></span><div><h2>公告事項</h2><p>全校與班級的最新消息</p></div></div>
               <strong>全部公告有 {dashboard.announcements.filter((item) => !item.readAt).length} 則未讀</strong>
             </div>
             {dashboard.announcements.length > 0 && <label className="student-announcement-month-filter">
               <span>選擇月份</span>
-              <select value={announcementMonth} onChange={(event) => setAnnouncementMonth(event.target.value)}>
+              <select value={announcementMonth} onChange={(event) => { setAnnouncementMonth(event.target.value); setAnnouncementPage(1) }}>
                 <option value="all">全部月份</option>
                 {availableAnnouncementMonths.map((month) => <option value={month.value} key={month.value}>{month.label}</option>)}
               </select>
@@ -347,7 +381,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
             {!dashboard.announcements.length && <div className="student-home-empty is-small"><CheckCircle2 /><strong>目前沒有新公告</strong></div>}
             {dashboard.announcements.length > 0 && !visibleAnnouncements.length && <div className="student-home-empty is-small"><Megaphone /><strong>這個月份沒有公告</strong><span>請改選其他月份。</span></div>}
             <div className="student-announcement-list">
-              {visibleAnnouncements.map((announcement) => (
+              {announcementPagination.items.map((announcement) => (
                 <StudentAnnouncementCard
                   key={announcement.id}
                   announcement={announcement}
@@ -356,23 +390,25 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
                 />
               ))}
             </div>
-          </section>
+            <StudentMessagePagination label="公告事項" page={announcementPagination.page} totalPages={announcementPagination.totalPages} onPageChange={setAnnouncementPage} />
+          </section>}
 
-          <section className="student-home-panel student-honor-panel">
+          {announcementSection === 'honors' && <section className="student-home-panel student-honor-panel">
             <div className="student-home-panel-heading">
-              <div><span><Trophy /></span><div><h2>班級榮譽榜</h2><p>一起為班上同學的好表現喝采</p></div></div>
+              <div><span><Trophy /></span><div><h2>榮譽榜</h2><p>一起為班上同學的好表現喝采</p></div></div>
               <strong>{dashboard.honors.length} 則榮譽</strong>
             </div>
             {!dashboard.honors.length && <div className="student-home-empty is-small"><Medal /><strong>目前尚無榮譽紀錄</strong></div>}
             <div className="student-honor-list">
-              {dashboard.honors.map((item) => (
+              {honorPagination.items.map((item) => (
                 <article key={item.id}>
                   <span className="student-honor-medal"><Medal /></span>
                   <div><div className="student-honor-names">{item.studentDisplayNames.map((name, index) => <strong key={item.studentIds[index]}>{name}</strong>)}</div><h3>{item.title}</h3>{item.description && <p>{item.description}</p>}<small>{item.awardedOn}</small></div>
                 </article>
               ))}
             </div>
-          </section>
+            <StudentMessagePagination label="榮譽榜" page={honorPagination.page} totalPages={honorPagination.totalPages} onPageChange={setHonorPage} />
+          </section>}
         </div>}
         {activeView === 'home' && <>
         <section className="student-welcome-card">
