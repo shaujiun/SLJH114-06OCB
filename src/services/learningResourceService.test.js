@@ -87,6 +87,17 @@ describe('學習資源輸入', () => {
       audienceScope: 'all_a',
     })).toThrow('顯示對象')
   })
+
+  it('每篇學習資源最多接受十張圖片', () => {
+    expect(() => validateLearningResourceInput({
+      ...base,
+      existingImageCount: 9,
+      imageFiles: [
+        { type: 'image/jpeg', size: 100 },
+        { type: 'image/webp', size: 100 },
+      ],
+    })).toThrow('最多可上傳 10 張圖片')
+  })
 })
 
 describe('學習資源封面讀取', () => {
@@ -102,6 +113,23 @@ describe('學習資源封面讀取', () => {
       imageError: '封面讀取失敗',
     })
   })
+
+  it('依設定順序回傳多張學習資源圖片', () => {
+    const urls = new Map([
+      ['class/resource/one.jpg', 'signed-one'],
+      ['class/resource/two.jpg', 'signed-two'],
+    ])
+    expect(mapLearningResourceRow({
+      id: 'resource-id',
+      resource_type: 'method',
+      title: '筆記方法',
+      image_paths: ['class/resource/one.jpg', 'class/resource/two.jpg'],
+      image_alt_texts: ['範例一', '範例二'],
+    }, urls).images).toEqual([
+      { path: 'class/resource/one.jpg', altText: '範例一', url: 'signed-one', error: '' },
+      { path: 'class/resource/two.jpg', altText: '範例二', url: 'signed-two', error: '' },
+    ])
+  })
 })
 
 describe('學習資源封面上傳錯誤', () => {
@@ -109,17 +137,17 @@ describe('學習資源封面上傳錯誤', () => {
     expect(learningResourceUploadErrorMessage({
       statusCode: 403,
       message: 'new row violates row-level security policy',
-    })).toBe('封面圖片上傳權限驗證失敗，請通知系統管理員。')
+    })).toBe('學習資源圖片上傳權限驗證失敗，請通知系統管理員。')
   })
 
   it('分別說明圖片過大與格式不符', () => {
     expect(learningResourceUploadErrorMessage({
       statusCode: 413,
       message: 'The object exceeded the maximum allowed size',
-    })).toBe('封面圖片不可超過 5 MB。')
+    })).toBe('每張學習資源圖片不可超過 5 MB。')
     expect(learningResourceUploadErrorMessage({
       statusCode: 400,
       message: 'mime type image/gif is not supported',
-    })).toBe('封面圖片只接受 JPG、PNG 或 WebP。')
+    })).toBe('學習資源圖片只接受 JPG、PNG 或 WebP。')
   })
 })

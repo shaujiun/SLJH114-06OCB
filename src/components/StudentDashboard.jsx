@@ -34,6 +34,7 @@ import {
   quizReminderDisplayText,
 } from '../services/quizReminderService.js'
 import { markAnnouncementRead } from '../services/announcementService.js'
+import ContentImageGallery from './ContentImageGallery.jsx'
 import {
   announcementMonthOptions,
   announcementPreview,
@@ -142,6 +143,16 @@ function AssignmentGroupCard({ group, exceptionsByAssignment }) {
 
 export function StudentAnnouncementCard({ announcement, reading, onRead }) {
   const preview = announcementPreview(announcement.content)
+  const images = announcement.images?.length
+    ? announcement.images
+    : announcement.imageUrl || announcement.imageError
+      ? [{
+          path: announcement.imagePath || 'legacy-announcement-image',
+          url: announcement.imageUrl,
+          altText: announcement.imageAltText || announcement.title,
+          error: announcement.imageError,
+        }]
+      : []
   return (
     <details className={`student-announcement-card ${announcement.readAt ? 'is-read' : 'is-unread'}`}>
       <summary className="student-announcement-summary">
@@ -161,8 +172,7 @@ export function StudentAnnouncementCard({ announcement, reading, onRead }) {
         </span>
       </summary>
       <div className="student-announcement-body">
-        {announcement.imageUrl && <img src={announcement.imageUrl} alt={announcement.imageAltText} loading="lazy" />}
-        {announcement.imageError && <p className="private-image-error">{announcement.imageError}</p>}
+        <ContentImageGallery images={images} className="is-student-announcement" />
         {announcement.content && <p>{announcement.content}</p>}
         {announcement.expiresAt && <small>顯示至：{formatAnnouncementDateTime(announcement.expiresAt)}</small>}
         {announcement.readAt
