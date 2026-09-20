@@ -299,6 +299,10 @@ create table if not exists public.announcements (
   content text,
   image_path text,
   image_alt_text text,
+  image_paths text[] not null default array[]::text[]
+    check (cardinality(image_paths) <= 10),
+  image_alt_texts text[] not null default array[]::text[]
+    check (cardinality(image_paths) = cardinality(image_alt_texts)),
   published_by uuid not null references public.contact_book_profiles(id) on delete restrict,
   published_at timestamptz not null default now(),
   expires_at timestamptz,

@@ -4,22 +4,24 @@ import {
   CalendarClock,
   Eye,
   EyeOff,
-  ImagePlus,
   Megaphone,
   Pencil,
   RefreshCw,
   Save,
   Send,
-  Trash2,
   Users,
   X,
 } from 'lucide-react'
 import {
+  MAX_ANNOUNCEMENT_IMAGES,
   createAnnouncement,
   deactivateAnnouncement,
   loadAdminAnnouncements,
   updateAnnouncement,
 } from '../services/announcementService.js'
+import ContentImageGallery from './ContentImageGallery.jsx'
+import MultiImageField from './MultiImageField.jsx'
+import useMultiImageSelection from '../hooks/useMultiImageSelection.js'
 
 function formatDateTime(value) {
   if (!value) return '未設定'
@@ -41,20 +43,24 @@ const emptyForm = {
   title: '',
   content: '',
   expiresAt: '',
-  imageAltText: '',
 }
 
 export default function AnnouncementManagement({ dashboard, onNotice }) {
   const [announcements, setAnnouncements] = useState([])
   const [form, setForm] = useState(emptyForm)
-  const [imageFile, setImageFile] = useState(null)
+  const [existingImages, setExistingImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deactivatingId, setDeactivatingId] = useState('')
   const [editingAnnouncement, setEditingAnnouncement] = useState(null)
-  const [removeExistingImage, setRemoveExistingImage] = useState(false)
-  const fileInputRef = useRef(null)
   const formPanelRef = useRef(null)
+  const {
+    newImages,
+    addImageFiles,
+    removeNewImage,
+    updateNewImageAltText,
+    clearNewImages,
+  } = useMultiImageSelection({ maxImages: MAX_ANNOUNCEMENT_IMAGES, imageLabel: '公告圖片' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -71,23 +77,20 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
 
   function resetForm() {
     setEditingAnnouncement(null)
-    setRemoveExistingImage(false)
+    setExistingImages([])
     setForm(emptyForm)
-    setImageFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    clearNewImages()
   }
 
   function startEditing(item) {
     setEditingAnnouncement(item)
-    setRemoveExistingImage(false)
-    setImageFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    setExistingImages(item.images || [])
+    clearNewImages()
     setForm({
       scope: item.scope,
       title: item.title,
       content: item.content,
       expiresAt: toDateTimeLocal(item.expiresAt),
-      imageAltText: item.imageAltText || item.title,
     })
     formPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -101,13 +104,19 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
           announcementId: editingAnnouncement.id,
           classId: dashboard.classInfo.id,
           ...form,
-          imageFile,
-          existingImagePath: editingAnnouncement.imagePath,
+          imageFiles: newImages.map((image) => image.file),
+          imageAltTexts: newImages.map((image) => image.altText),
+          existingImages,
+          currentImagePaths: (editingAnnouncement.images || []).map((image) => image.path),
           previousExpiresAt: editingAnnouncement.expiresAt,
-          removeImage: removeExistingImage,
         })
       } else {
-        await createAnnouncement({ classId: dashboard.classInfo.id, ...form, imageFile })
+        await createAnnouncement({
+          classId: dashboard.classInfo.id,
+          ...form,
+          imageFiles: newImages.map((image) => image.file),
+          imageAltTexts: newImages.map((image) => image.altText),
+        })
       }
       const noticeTitle = form.title.trim()
       const wasEditing = Boolean(editingAnnouncement)
@@ -158,23 +167,22 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
           <label><span>公告內容</span><textarea rows="5" maxLength="2000" value={form.content} placeholder="請輸入公告內容" onChange={(event) => setForm({ ...form, content: event.target.value })} /></label>
           <label><span>到期時間（選填）</span><input type="datetime-local" value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} /></label>
 
-          <label className="announcement-image-field">
-            <span><ImagePlus aria-hidden="true" />公告圖片（選填）</span>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setImageFile(event.target.files?.[0] || null); setRemoveExistingImage(false) }} />
-            <small>接受 JPG、PNG、WebP，檔案上限 5 MB。</small>
-          </label>
-          {editingAnnouncement?.imagePath && !imageFile && (
-            <div className={`announcement-existing-image${removeExistingImage ? ' is-removing' : ''}`}>
-              {editingAnnouncement.imageUrl && !removeExistingImage && <img src={editingAnnouncement.imageUrl} alt={editingAnnouncement.imageAltText} />}
-              <div>
-                <strong>{removeExistingImage ? '儲存後將移除原圖片' : '目前公告圖片'}</strong>
-                <button type="button" onClick={() => setRemoveExistingImage((value) => !value)}>
-                  {removeExistingImage ? <><X />取消移除</> : <><Trash2 />移除圖片</>}
-                </button>
-              </div>
-            </div>
-          )}
-          {(imageFile || (editingAnnouncement?.imagePath && !removeExistingImage)) && <label><span>圖片說明（選填）</span><input maxLength="100" value={form.imageAltText} placeholder="例如：校外教學通知單" onChange={(event) => setForm({ ...form, imageAltText: event.target.value })} /></label>}
+          <MultiImageField
+            label="公告圖片"
+            existingImages={existingImages}
+            newImages={newImages}
+            maxImages={MAX_ANNOUNCEMENT_IMAGES}
+            onAddFiles={(files) => {
+              const error = addImageFiles(files, existingImages.length, form.title)
+              if (error) onNotice('error', error)
+            }}
+            onRemoveExisting={(path) => setExistingImages((current) => current.filter((image) => image.path !== path))}
+            onExistingAltTextChange={(path, altText) => setExistingImages((current) => current.map((image) => (
+              image.path === path ? { ...image, altText } : image
+            )))}
+            onRemoveNew={removeNewImage}
+            onNewAltTextChange={updateNewImageAltText}
+          />
 
           <div className="announcement-form-actions">
             <button className="approve-button" type="submit" disabled={saving || !form.title.trim()}>{editingAnnouncement ? <Save aria-hidden="true" /> : <Send aria-hidden="true" />}{saving ? '儲存中…' : editingAnnouncement ? '儲存修改' : '發布公告'}</button>
@@ -194,8 +202,7 @@ export default function AnnouncementManagement({ dashboard, onNotice }) {
           <div className="announcement-admin-list">
             {announcements.map((item) => (
               <article className={!item.isActive ? 'is-inactive' : ''} key={item.id}>
-                {item.imageUrl && <img src={item.imageUrl} alt={item.imageAltText} />}
-                {item.imageError && <p className="private-image-error">{item.imageError}</p>}
+                <ContentImageGallery images={item.images} className="is-announcement-admin" />
                 <div className="announcement-admin-body">
                   <div className="announcement-admin-topline">
                     <span className={`announcement-scope is-${item.scope}`}>{item.scope === 'school' ? '全校公告' : '班級公告'}</span>

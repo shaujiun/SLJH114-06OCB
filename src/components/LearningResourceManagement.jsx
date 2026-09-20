@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
   BookOpenText,
   Eye,
   EyeOff,
-  ImagePlus,
   Pencil,
   Pin,
   PlayCircle,
@@ -16,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import {
+  MAX_LEARNING_RESOURCE_IMAGES,
   deleteLearningResource,
   loadManagedLearningResources,
   saveLearningResource,
@@ -24,7 +24,9 @@ import {
   videoEmbedInfo,
 } from '../services/learningResourceService.js'
 import LearningResourceCard from './LearningResourceCard.jsx'
+import MultiImageField from './MultiImageField.jsx'
 import { learningResourceAudienceOptionsForSubject } from '../lib/learningResourceAudiences.js'
+import useMultiImageSelection from '../hooks/useMultiImageSelection.js'
 
 function localDateTimeString(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value)
@@ -44,7 +46,6 @@ function emptyForm(defaultSubjectId = '') {
     contentUrl: '',
     sourceName: '',
     sourceUrl: '',
-    imageAltText: '',
     publishedAt: localDateTimeString(),
     isPinned: false,
   }
@@ -69,13 +70,17 @@ export default function LearningResourceManagement({
   const [resources, setResources] = useState([])
   const [form, setForm] = useState(() => emptyForm(defaultSubjectId))
   const [editing, setEditing] = useState(null)
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState('')
-  const [removeImage, setRemoveImage] = useState(false)
+  const [existingImages, setExistingImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [workingId, setWorkingId] = useState('')
-  const fileInputRef = useRef(null)
+  const {
+    newImages,
+    addImageFiles,
+    removeNewImage,
+    updateNewImageAltText,
+    clearNewImages,
+  } = useMultiImageSelection({ maxImages: MAX_LEARNING_RESOURCE_IMAGES, imageLabel: '學習資源圖片' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -93,23 +98,11 @@ export default function LearningResourceManagement({
 
   useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    if (!imageFile) {
-      setImagePreview('')
-      return undefined
-    }
-    const previewUrl = URL.createObjectURL(imageFile)
-    setImagePreview(previewUrl)
-    return () => URL.revokeObjectURL(previewUrl)
-  }, [imageFile])
-
   function resetForm() {
     setForm(emptyForm(defaultSubjectId))
     setEditing(null)
-    setImageFile(null)
-    setImagePreview('')
-    setRemoveImage(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    setExistingImages([])
+    clearNewImages()
   }
 
   async function submit(event) {
@@ -125,9 +118,10 @@ export default function LearningResourceManagement({
         classId: dashboard.classInfo.id,
         ...form,
         contentType: form.resourceType === 'video' ? 'video' : form.contentType,
-        imageFile,
-        currentImagePath: editing?.imagePath,
-        removeImage,
+        imageFiles: newImages.map((image) => image.file),
+        imageAltTexts: newImages.map((image) => image.altText),
+        existingImages,
+        currentImagePaths: (editing?.images || []).map((image) => image.path),
         sortOrder: editing?.sortOrder || 0,
       })
       const title = form.title.trim()
@@ -154,13 +148,11 @@ export default function LearningResourceManagement({
       contentUrl: resource.contentUrl,
       sourceName: resource.sourceName,
       sourceUrl: resource.sourceUrl,
-      imageAltText: resource.imageAltText,
       publishedAt: localDateTimeString(resource.publishedAt),
       isPinned: resource.isPinned,
     })
-    setImageFile(null)
-    setRemoveImage(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    setExistingImages(resource.images || [])
+    clearNewImages()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -251,8 +243,15 @@ export default function LearningResourceManagement({
       contentUrl: form.contentUrl,
       sourceName: form.sourceName,
       sourceUrl: form.sourceUrl,
-      imageUrl: imagePreview || (!removeImage ? editing?.imageUrl : ''),
-      imageAltText: form.imageAltText || form.title,
+      images: [
+        ...existingImages,
+        ...newImages.map((image) => ({
+          path: image.id,
+          url: image.previewUrl,
+          altText: image.altText || form.title,
+          error: '',
+        })),
+      ],
       publishedAt: form.publishedAt,
       isPinned: form.isPinned,
       subject: dashboard.classSubjects.find((subject) => subject.id === form.classSubjectId) || null,
@@ -260,7 +259,7 @@ export default function LearningResourceManagement({
       videoPlatform: embed.platform,
       embedUrl: embed.embedUrl,
     }
-  }, [audienceOptions, dashboard.classSubjects, editing, form, imagePreview, removeImage, teacherMode])
+  }, [audienceOptions, dashboard.classSubjects, existingImages, form, newImages, teacherMode])
 
   return (
     <section className="learning-resource-management">
@@ -299,13 +298,22 @@ export default function LearningResourceManagement({
             <label><span>原始出處網址（選填）</span><input type="url" value={form.sourceUrl} placeholder="https://…" onChange={(event) => setForm({ ...form, sourceUrl: event.target.value })} /></label>
           </div>
 
-          <label className="announcement-image-field">
-            <span><ImagePlus />封面圖片（選填）</span>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setImageFile(event.target.files?.[0] || null); setRemoveImage(false) }} />
-            <small>接受 JPG、PNG、WebP，檔案上限 5 MB。</small>
-          </label>
-          {(imageFile || (editing?.imagePath && !removeImage)) && <label><span>圖片說明（選填）</span><input maxLength="120" value={form.imageAltText} onChange={(event) => setForm({ ...form, imageAltText: event.target.value })} /></label>}
-          {editing?.imagePath && !imageFile && <label className="learning-resource-checkbox"><input type="checkbox" checked={removeImage} onChange={(event) => setRemoveImage(event.target.checked)} /><span>移除原有封面圖片</span></label>}
+          <MultiImageField
+            label="學習資源圖片"
+            existingImages={existingImages}
+            newImages={newImages}
+            maxImages={MAX_LEARNING_RESOURCE_IMAGES}
+            onAddFiles={(files) => {
+              const error = addImageFiles(files, existingImages.length, form.title)
+              if (error) onNotice('error', error)
+            }}
+            onRemoveExisting={(path) => setExistingImages((current) => current.filter((image) => image.path !== path))}
+            onExistingAltTextChange={(path, altText) => setExistingImages((current) => current.map((image) => (
+              image.path === path ? { ...image, altText } : image
+            )))}
+            onRemoveNew={removeNewImage}
+            onNewAltTextChange={updateNewImageAltText}
+          />
           <label className="learning-resource-checkbox"><input type="checkbox" checked={form.isPinned} onChange={(event) => setForm({ ...form, isPinned: event.target.checked })} /><span><Pin />置頂顯示</span></label>
 
           <div className="learning-resource-form-actions">

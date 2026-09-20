@@ -8,6 +8,7 @@ import { createClientId } from './announcementService.js'
 
 const RESOURCE_BUCKET = 'contact-book-learning-resources'
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+export const MAX_LEARNING_RESOURCE_IMAGES = 10
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 function relation(value) {
@@ -24,6 +25,22 @@ function extensionFor(file) {
   return 'jpg'
 }
 
+function normalizedImageFiles(imageFiles, imageFile) {
+  if (Array.isArray(imageFiles)) return imageFiles.filter(Boolean)
+  return imageFile ? [imageFile] : []
+}
+
+function storedImages(row) {
+  const paths = Array.isArray(row.image_paths) && row.image_paths.length
+    ? row.image_paths.filter(Boolean)
+    : row.image_path ? [row.image_path] : []
+  const altTexts = Array.isArray(row.image_alt_texts) ? row.image_alt_texts : []
+  return paths.map((path, index) => ({
+    path,
+    altText: normalizeText(altTexts[index]) || (index === 0 ? normalizeText(row.image_alt_text) : '') || row.title,
+  }))
+}
+
 export function learningResourceUploadErrorMessage(error) {
   const status = Number(error?.statusCode || error?.status || 0)
   const message = String(error?.message || error?.error || '').toLowerCase()
@@ -33,15 +50,15 @@ export function learningResourceUploadErrorMessage(error) {
     || message.includes('row-level security')
     || message.includes('unauthorized')
   ) {
-    return '封面圖片上傳權限驗證失敗，請通知系統管理員。'
+    return '學習資源圖片上傳權限驗證失敗，請通知系統管理員。'
   }
   if (status === 413 || message.includes('maximum allowed size') || message.includes('too large')) {
-    return '封面圖片不可超過 5 MB。'
+    return '每張學習資源圖片不可超過 5 MB。'
   }
   if (message.includes('mime type') || message.includes('content type')) {
-    return '封面圖片只接受 JPG、PNG 或 WebP。'
+    return '學習資源圖片只接受 JPG、PNG 或 WebP。'
   }
-  return '封面圖片上傳失敗，請稍後再試。'
+  return '學習資源圖片上傳失敗，請稍後再試。'
 }
 
 export function normalizeHttpUrl(value, { required = false } = {}) {
@@ -131,7 +148,9 @@ export function validateLearningResourceInput({
   sourceName,
   sourceUrl,
   publishedAt,
+  imageFiles,
   imageFile,
+  existingImageCount = 0,
   audienceScope = 'common',
 }) {
   const normalizedTitle = normalizeText(title)
@@ -154,9 +173,13 @@ export function validateLearningResourceInput({
   const normalizedSourceUrl = normalizeHttpUrl(sourceUrl)
   const publishedDate = new Date(publishedAt)
   if (!publishedAt || Number.isNaN(publishedDate.getTime())) throw new Error('請設定正確的發布日期。')
-  if (imageFile) {
-    if (!ALLOWED_IMAGE_TYPES.has(imageFile.type)) throw new Error('封面圖片只接受 JPG、PNG 或 WebP。')
-    if (imageFile.size > MAX_IMAGE_SIZE) throw new Error('封面圖片不可超過 5 MB。')
+  const files = normalizedImageFiles(imageFiles, imageFile)
+  if (existingImageCount + files.length > MAX_LEARNING_RESOURCE_IMAGES) {
+    throw new Error(`每篇學習資源最多可上傳 ${MAX_LEARNING_RESOURCE_IMAGES} 張圖片。`)
+  }
+  for (const file of files) {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) throw new Error('學習資源圖片只接受 JPG、PNG 或 WebP。')
+    if (file.size > MAX_IMAGE_SIZE) throw new Error('每張學習資源圖片不可超過 5 MB。')
   }
   return {
     title: normalizedTitle,
@@ -170,13 +193,25 @@ export function validateLearningResourceInput({
   }
 }
 
-export function mapLearningResourceRow(row, imageUrl = null, imageError = '') {
+export function mapLearningResourceRow(row, imageUrls = new Map(), failedPaths = new Set()) {
   const classSubject = relation(row.class_subjects)
   const subject = relation(classSubject?.subjects)
   const creator = relation(row.contact_book_profiles)
   const embed = row.resource_type === 'video'
     ? videoEmbedInfo(row.content_url)
     : { platform: null, embedUrl: null }
+  const urlMap = imageUrls instanceof Map ? imageUrls : new Map()
+  const failedSet = failedPaths instanceof Set ? failedPaths : new Set()
+  const legacyUrl = typeof imageUrls === 'string' ? imageUrls : null
+  const legacyError = typeof failedPaths === 'string' ? failedPaths : ''
+  const images = storedImages(row).map((image) => ({
+    ...image,
+    url: urlMap.get(image.path) || legacyUrl || null,
+    error: failedSet.has(image.path)
+      ? '學習資源圖片暫時無法讀取，請重新整理後再試。'
+      : legacyError,
+  }))
+  const firstImage = images[0] || null
   return {
     id: row.id,
     classId: row.class_id,
@@ -191,10 +226,11 @@ export function mapLearningResourceRow(row, imageUrl = null, imageError = '') {
     contentUrl: row.content_url || '',
     sourceName: row.source_name || '',
     sourceUrl: row.source_url || '',
-    imagePath: row.image_path,
-    imageAltText: row.image_alt_text || row.title,
-    imageUrl,
-    imageError,
+    images,
+    imagePath: firstImage?.path || null,
+    imageAltText: firstImage?.altText || row.title,
+    imageUrl: firstImage?.url || null,
+    imageError: firstImage?.error || '',
     publishedAt: row.published_at,
     isPinned: row.is_pinned,
     sortOrder: row.sort_order,
@@ -212,7 +248,7 @@ export function mapLearningResourceRow(row, imageUrl = null, imageError = '') {
 }
 
 async function signedImageUrls(client, rows) {
-  const paths = [...new Set((rows || []).map((row) => row.image_path).filter(Boolean))]
+  const paths = [...new Set((rows || []).flatMap((row) => storedImages(row).map((image) => image.path)))]
   if (!paths.length) return { urls: new Map(), failedPaths: new Set() }
   const { data, error } = await client.storage.from(RESOURCE_BUCKET).createSignedUrls(paths, 3600)
   if (error) return { urls: new Map(), failedPaths: new Set(paths) }
@@ -222,6 +258,29 @@ async function signedImageUrls(client, rows) {
   return {
     urls,
     failedPaths: new Set(paths.filter((path) => !urls.has(path))),
+  }
+}
+
+async function uploadLearningResourceImages(client, {
+  classId, userId, resourceId, imageFiles, imageAltTexts, title,
+}) {
+  const uploaded = []
+  try {
+    for (let index = 0; index < imageFiles.length; index += 1) {
+      const file = imageFiles[index]
+      const path = `${classId}/${userId}/${resourceId}/${createClientId()}.${extensionFor(file)}`
+      const { error } = await client.storage
+        .from(RESOURCE_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false })
+      if (error) throw new Error(learningResourceUploadErrorMessage(error))
+      uploaded.push({ path, altText: normalizeText(imageAltTexts[index]) || title })
+    }
+    return uploaded
+  } catch (error) {
+    if (uploaded.length) {
+      await client.storage.from(RESOURCE_BUCKET).remove(uploaded.map((image) => image.path))
+    }
+    throw error
   }
 }
 
@@ -240,6 +299,8 @@ const resourceSelect = `
   source_url,
   image_path,
   image_alt_text,
+  image_paths,
+  image_alt_texts,
   published_at,
   is_pinned,
   sort_order,
@@ -255,11 +316,7 @@ async function loadResourceRows(query) {
   if (error) throw new Error('無法讀取學習資源，請重新整理後再試。')
   const rows = data || []
   const { urls: imageUrls, failedPaths } = await signedImageUrls(client, rows)
-  return rows.map((row) => mapLearningResourceRow(
-    row,
-    imageUrls.get(row.image_path) || null,
-    failedPaths.has(row.image_path) ? '封面圖片暫時無法讀取，請重新整理後再試。' : '',
-  ))
+  return rows.map((row) => mapLearningResourceRow(row, imageUrls, failedPaths))
 }
 
 export async function loadManagedLearningResources({ classId, ownOnly = false }) {
@@ -306,15 +363,29 @@ export async function saveLearningResource({
   contentUrl,
   sourceName,
   sourceUrl,
+  imageFiles,
   imageFile,
+  imageAltTexts = [],
   imageAltText,
   audienceScope = 'common',
+  existingImages,
+  currentImagePaths,
   currentImagePath,
   removeImage = false,
   publishedAt,
   isPinned,
   sortOrder = 0,
 }) {
+  const files = normalizedImageFiles(imageFiles, imageFile)
+  const keptImages = Array.isArray(existingImages)
+    ? existingImages.map((image) => ({ path: image.path, altText: normalizeText(image.altText) || title }))
+    : removeImage || !currentImagePath
+      ? []
+      : [{ path: currentImagePath, altText: normalizeText(imageAltText) || title }]
+  const previousPaths = Array.isArray(currentImagePaths)
+    ? currentImagePaths.filter(Boolean)
+    : currentImagePath ? [currentImagePath] : []
+  const altTexts = imageAltTexts.length ? imageAltTexts : files.map(() => imageAltText || '')
   const validated = validateLearningResourceInput({
     resourceType,
     contentType,
@@ -325,7 +396,8 @@ export async function saveLearningResource({
     sourceName,
     sourceUrl,
     publishedAt,
-    imageFile,
+    imageFiles: files,
+    existingImageCount: keptImages.length,
     audienceScope,
   })
   const client = requireSupabase()
@@ -334,19 +406,11 @@ export async function saveLearningResource({
   if (userError || !userId) throw new Error('登入狀態已失效，請重新登入。')
 
   const resourceId = id || createClientId()
-  let nextImagePath = removeImage ? null : currentImagePath || null
-  let uploadedImagePath = null
-  if (imageFile) {
-    uploadedImagePath = `${classId}/${userId}/${resourceId}/${createClientId()}.${extensionFor(imageFile)}`
-    const { error: uploadError } = await client.storage
-      .from(RESOURCE_BUCKET)
-      .upload(uploadedImagePath, imageFile, {
-        contentType: imageFile.type,
-        upsert: false,
-      })
-    if (uploadError) throw new Error(learningResourceUploadErrorMessage(uploadError))
-    nextImagePath = uploadedImagePath
-  }
+  const uploadedImages = await uploadLearningResourceImages(client, {
+    classId, userId, resourceId, imageFiles: files, imageAltTexts: altTexts, title: validated.title,
+  })
+  const images = [...keptImages, ...uploadedImages]
+  const firstImage = images[0] || null
 
   const values = {
     class_id: classId,
@@ -360,8 +424,10 @@ export async function saveLearningResource({
     content_url: contentType === 'article' ? null : validated.contentUrl,
     source_name: validated.sourceName || null,
     source_url: validated.sourceUrl || null,
-    image_path: nextImagePath,
-    image_alt_text: nextImagePath ? normalizeText(imageAltText) || validated.title : null,
+    image_path: firstImage?.path || null,
+    image_alt_text: firstImage?.altText || null,
+    image_paths: images.map((image) => image.path),
+    image_alt_texts: images.map((image) => image.altText),
     published_at: validated.publishedAt,
     is_pinned: Boolean(isPinned),
     sort_order: Number.isInteger(sortOrder) ? sortOrder : 0,
@@ -377,7 +443,7 @@ export async function saveLearningResource({
     }).select('id').single()
 
   if (result.error) {
-    if (uploadedImagePath) await client.storage.from(RESOURCE_BUCKET).remove([uploadedImagePath])
+    if (uploadedImages.length) await client.storage.from(RESOURCE_BUCKET).remove(uploadedImages.map((image) => image.path))
     const message = result.error.message || ''
     if (message.includes('row-level security') || result.error.code === '42501') {
       throw new Error('目前帳號沒有管理這個科目學習資源的權限。')
@@ -385,11 +451,10 @@ export async function saveLearningResource({
     throw new Error(id ? '學習資源更新失敗，請稍後再試。' : '學習資源發布失敗，請稍後再試。')
   }
 
-  if (
-    currentImagePath
-    && currentImagePath !== nextImagePath
-  ) {
-    await client.storage.from(RESOURCE_BUCKET).remove([currentImagePath])
+  const keptPaths = new Set(keptImages.map((image) => image.path))
+  const removedPaths = previousPaths.filter((path) => !keptPaths.has(path))
+  if (removedPaths.length) {
+    await client.storage.from(RESOURCE_BUCKET).remove(removedPaths)
   }
   return result.data
 }
@@ -409,8 +474,11 @@ export async function deleteLearningResource(resource) {
   const client = requireSupabase()
   const { error } = await client.from('learning_resources').delete().eq('id', resource.id)
   if (error) throw new Error('學習資源刪除失敗，請稍後再試。')
-  if (resource.imagePath) {
-    await client.storage.from(RESOURCE_BUCKET).remove([resource.imagePath])
+  const imagePaths = Array.isArray(resource.images)
+    ? resource.images.map((image) => image.path).filter(Boolean)
+    : resource.imagePath ? [resource.imagePath] : []
+  if (imagePaths.length) {
+    await client.storage.from(RESOURCE_BUCKET).remove(imagePaths)
   }
 }
 

@@ -4,6 +4,7 @@ import {
   Pin,
   PlayCircle,
 } from 'lucide-react'
+import ContentImageGallery from './ContentImageGallery.jsx'
 
 function formatDate(value) {
   if (!value) return ''
@@ -17,16 +18,19 @@ function formatDate(value) {
 export default function LearningResourceCard({ resource, preview = false }) {
   const isVideo = resource.resourceType === 'video'
   const externalLabel = isVideo ? '前往觀看' : '閱讀原文'
+  const images = resource.images?.length
+    ? resource.images
+    : resource.imageUrl || resource.imageError
+      ? [{
+          path: resource.imagePath || 'legacy-cover',
+          url: resource.imageUrl,
+          altText: resource.imageAltText || resource.title,
+          error: resource.imageError,
+        }]
+      : []
   return (
     <article className={`learning-resource-card is-${resource.resourceType}${preview ? ' is-preview' : ''}`}>
-      {resource.imageUrl && (
-        <img
-          className="learning-resource-cover"
-          src={resource.imageUrl}
-          alt={resource.imageAltText || resource.title}
-        />
-      )}
-      {resource.imageError && <p className="private-image-error">{resource.imageError}</p>}
+      <ContentImageGallery images={images} className="is-learning-resource" />
       <div className="learning-resource-card-body">
         <div className="learning-resource-card-meta">
           <span className="learning-resource-type">

@@ -83,6 +83,36 @@ describe('公告資料驗證', () => {
       imageError: '圖片讀取失敗',
     })
   })
+
+  it('依資料庫順序保留多張公告圖片與各自說明', () => {
+    const urls = new Map([
+      ['class-id/a/one.jpg', 'signed-one'],
+      ['class-id/a/two.jpg', 'signed-two'],
+    ])
+    expect(mapAnnouncementRow({
+      id: 'announcement-id',
+      title: '戶外教育',
+      image_paths: ['class-id/a/one.jpg', 'class-id/a/two.jpg'],
+      image_alt_texts: ['集合地點', '行程表'],
+    }, urls).images).toEqual([
+      { path: 'class-id/a/one.jpg', altText: '集合地點', url: 'signed-one', error: '' },
+      { path: 'class-id/a/two.jpg', altText: '行程表', url: 'signed-two', error: '' },
+    ])
+  })
+
+  it('每篇公告最多接受十張圖片', () => {
+    expect(() => validateAnnouncementInput({
+      scope: 'class',
+      title: '圖片公告',
+      content: '',
+      expiresAt: '',
+      existingImageCount: 9,
+      imageFiles: [
+        { type: 'image/jpeg', size: 100 },
+        { type: 'image/png', size: 100 },
+      ],
+    })).toThrow('最多可上傳 10 張圖片')
+  })
 })
 
 describe('公告編輯', () => {
