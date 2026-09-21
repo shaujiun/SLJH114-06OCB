@@ -39,6 +39,32 @@ describe('榮譽榜資料', () => {
       id: 'honor-id', studentDisplayName: '王小明', title: '服務楷模', description: '', isVisible: true,
     })
   })
+
+  it('多人共用同一組照片且只顯示一次', () => {
+    const rows = [
+      { id: 'entry-1', honor_group_id: 'group-1', student_id: 'student-1', student_display_name: '王小明', title: '科展優等', image_paths: ['class/honors/group/photo.jpg'], image_alt_texts: ['頒獎合照'] },
+      { id: 'entry-2', honor_group_id: 'group-1', student_id: 'student-2', student_display_name: '陳小華', title: '科展優等', image_paths: ['class/honors/group/photo.jpg'], image_alt_texts: ['頒獎合照'] },
+    ]
+    const groups = groupHonorRows(rows, new Map([['class/honors/group/photo.jpg', 'signed-photo']]))
+    expect(groups).toHaveLength(1)
+    expect(groups[0].images).toEqual([{
+      path: 'class/honors/group/photo.jpg', altText: '頒獎合照', url: 'signed-photo', error: '',
+    }])
+  })
+
+  it('每則榮譽最多接受十張照片', () => {
+    expect(() => validateHonorInput({
+      studentIds: ['student-1'],
+      title: '科展優等',
+      description: '',
+      awardedOn: '2026-09-18',
+      existingImageCount: 9,
+      imageFiles: [
+        { type: 'image/jpeg', size: 100 },
+        { type: 'image/png', size: 100 },
+      ],
+    })).toThrow('最多可上傳 10 張照片')
+  })
 })
 
 describe('管理員建立榮譽榜', () => {
@@ -60,7 +86,39 @@ describe('管理員建立榮譽榜', () => {
       p_title: '服務楷模',
       p_description: '',
       p_awarded_on: '2026-10-01',
+      p_image_paths: [],
+      p_image_alt_texts: [],
     })
+  })
+
+  it('上傳多張照片後以同一榮譽群組資料寫入', async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null })
+    const remove = vi.fn().mockResolvedValue({ error: null })
+    rpc.mockResolvedValue({ data: { honorGroupId: 'group-id' }, error: null })
+    requireSupabase.mockReturnValue({
+      rpc,
+      storage: { from: vi.fn(() => ({ upload, remove })) },
+    })
+
+    await createHonorEntries({
+      classId: 'class-id',
+      studentIds: ['student-1'],
+      title: '科展優等',
+      description: '',
+      awardedOn: '2026-10-01',
+      imageFiles: [
+        { type: 'image/jpeg', size: 100 },
+        { type: 'image/png', size: 100 },
+      ],
+      imageAltTexts: ['頒獎照片', '作品照片'],
+    })
+
+    expect(upload).toHaveBeenCalledTimes(2)
+    const rpcValues = rpc.mock.calls[0][1]
+    expect(rpcValues.p_image_paths).toHaveLength(2)
+    expect(rpcValues.p_image_paths[0]).toMatch(/^class-id\/honors\//)
+    expect(rpcValues.p_image_alt_texts).toEqual(['頒獎照片', '作品照片'])
+    expect(remove).not.toHaveBeenCalled()
   })
 
   it('透過受保護的操作隱藏榮譽紀錄', async () => {
@@ -87,6 +145,8 @@ describe('管理員建立榮譽榜', () => {
       p_title: '校內 作文比賽',
       p_description: '優等',
       p_awarded_on: '2026-10-02',
+      p_image_paths: [],
+      p_image_alt_texts: [],
     })
   })
 

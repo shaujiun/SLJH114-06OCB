@@ -413,7 +413,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
               {honorPagination.items.map((item) => (
                 <article key={item.id}>
                   <span className="student-honor-medal"><Medal /></span>
-                  <div><div className="student-honor-names">{item.studentDisplayNames.map((name, index) => <strong key={item.studentIds[index]}>{name}</strong>)}</div><h3>{item.title}</h3>{item.description && <p>{item.description}</p>}<small>{item.awardedOn}</small></div>
+                  <div><div className="student-honor-names">{item.studentDisplayNames.map((name, index) => <strong key={item.studentIds[index]}>{name}</strong>)}</div><h3>{item.title}</h3>{item.description && <p>{item.description}</p>}<ContentImageGallery images={item.images || []} className="is-honor" /><small>{item.awardedOn}</small></div>
                 </article>
               ))}
             </div>

@@ -328,6 +328,10 @@ create table if not exists public.honor_entries (
   student_display_name text not null,
   title text not null check (length(trim(title)) > 0),
   description text,
+  image_paths text[] not null default array[]::text[]
+    check (cardinality(image_paths) <= 10),
+  image_alt_texts text[] not null default array[]::text[]
+    check (cardinality(image_paths) = cardinality(image_alt_texts)),
   awarded_on date not null,
   created_by uuid not null references public.contact_book_profiles(id) on delete restrict,
   is_visible boolean not null default true,
