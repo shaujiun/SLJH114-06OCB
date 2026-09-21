@@ -37,17 +37,26 @@ describe('學生聯絡簿資料', () => {
 
   it('兼任幹部的學生首頁只保留自己是作業對象的分組作業', () => {
     const assignmentRows = [
-      { id: 'english-a', target_type: 'group', target_group_code: 'A' },
-      { id: 'english-b', target_type: 'group', target_group_code: 'B' },
-      { id: 'common', target_type: 'common', target_group_code: null },
+      { id: 'english-a', target_type: 'group', target_group_code: 'A', assignment_date: '2026-09-19' },
+      { id: 'english-b', target_type: 'group', target_group_code: 'B', assignment_date: '2026-09-19' },
+      { id: 'common', target_type: 'common', target_group_code: null, assignment_date: '2026-09-19' },
     ]
     const recipientRows = [
       { assignment_id: 'english-b', submitted_at: null },
       { assignment_id: 'common', submitted_at: null },
     ]
 
-    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows).map((item) => item.id))
+    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows, '2026-09-19').map((item) => item.id))
       .toEqual(['english-b', 'common'])
+  })
+
+  it('預先建立的作業在指定日期前不進入學生資料，指定當天才顯示', () => {
+    const assignmentRows = [{ id: 'future', assignment_date: '2026-09-21', content: '指定練習' }]
+    const recipientRows = [{ assignment_id: 'future', submitted_at: null }]
+    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows, '2026-09-18')).toEqual([])
+    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows, '2026-09-19')).toEqual([])
+    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows, '2026-09-20')).toEqual([])
+    expect(filterAssignmentRowsForStudent(assignmentRows, recipientRows, '2026-09-21')).toEqual(assignmentRows)
   })
 
   it('不同科目的共同或同組作業會合併成同一區塊', () => {
