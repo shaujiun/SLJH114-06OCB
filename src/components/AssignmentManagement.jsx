@@ -200,8 +200,12 @@ export default function AssignmentManagement({
     [missingStudentRows, missingReportStartDate, missingReportEndDate, missingReportSeat],
   )
   const missingSeatOptions = useMemo(
-    () => [...new Set([...missingStudentRows.map((student) => student.seatNumber), ...(missingReportSeat ? [Number(missingReportSeat)] : [])])].sort((left, right) => left - right),
-    [missingStudentRows, missingReportSeat],
+    () => [...new Set([
+      ...audienceStudents.map((student) => Number(student.seatNumber)),
+      ...missingStudentRows.map((student) => student.seatNumber),
+      ...(missingReportSeat ? [Number(missingReportSeat)] : []),
+    ].filter((seat) => Number.isInteger(seat) && seat > 0))].sort((left, right) => left - right),
+    [audienceStudents, missingStudentRows, missingReportSeat],
   )
   const missingDateRangeInvalid = Boolean(missingReportStartDate && missingReportEndDate && missingReportStartDate > missingReportEndDate)
   const missingSubmissionCount = useMemo(
