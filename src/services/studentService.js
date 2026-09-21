@@ -17,6 +17,17 @@ function localDateString(date = new Date()) {
   return local.toISOString().slice(0, 10)
 }
 
+function taipeiDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${value.year}-${value.month}-${value.day}`
+}
+
 function shiftLocalDate(dateString, days) {
   const value = new Date(`${dateString}T12:00:00`)
   value.setDate(value.getDate() + days)
@@ -59,11 +70,13 @@ export function mapStudentAssignmentRow(row) {
   }
 }
 
-export function filterAssignmentRowsForStudent(assignmentRows, recipientRows) {
+export function filterAssignmentRowsForStudent(assignmentRows, recipientRows, today = taipeiDateString()) {
   const recipientAssignmentIds = new Set(
     (recipientRows || []).map((row) => row.assignment_id),
   )
-  return (assignmentRows || []).filter((row) => recipientAssignmentIds.has(row.id))
+  return (assignmentRows || []).filter((row) => (
+    recipientAssignmentIds.has(row.id) && row.assignment_date <= today
+  ))
 }
 
 export function filterVisibleStudentAssignments(assignments, academicTermId) {
@@ -244,6 +257,7 @@ export async function loadStudentDashboard() {
       .from('assignments')
       .select('id,academic_term_id,assignment_date,content,due_at,target_type,target_group_code,published_by_display_name,class_subjects!inner(subjects!inner(code,name))')
       .eq('is_active', true)
+      .lte('assignment_date', taipeiDateString())
       .order('due_at'),
     client
       .from('assignment_recipients')
