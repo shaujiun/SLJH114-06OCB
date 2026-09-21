@@ -4209,6 +4209,12 @@ footer {
   border-radius: 12px;
 }
 
+.content-image-gallery.is-honor {
+  margin-top: 10px;
+  border: 1px solid #e0d2a8;
+  border-radius: 12px;
+}
+
 .announcement-form-actions {
   display: flex;
   flex-wrap: wrap;

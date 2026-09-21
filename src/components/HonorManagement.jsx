@@ -13,12 +13,16 @@ import {
   X,
 } from 'lucide-react'
 import {
+  MAX_HONOR_IMAGES,
   createHonorEntries,
   deleteHonorGroup,
   loadAdminHonors,
   setHonorVisibility,
   updateHonorGroup,
 } from '../services/honorService.js'
+import ContentImageGallery from './ContentImageGallery.jsx'
+import MultiImageField from './MultiImageField.jsx'
+import useMultiImageSelection from '../hooks/useMultiImageSelection.js'
 
 function todayString() {
   const now = new Date()
@@ -36,6 +40,14 @@ export default function HonorManagement({ dashboard, onNotice }) {
   const [visibilityId, setVisibilityId] = useState('')
   const [deletingId, setDeletingId] = useState('')
   const [editingGroupId, setEditingGroupId] = useState('')
+  const [existingImages, setExistingImages] = useState([])
+  const {
+    newImages,
+    addImageFiles,
+    removeNewImage,
+    updateNewImageAltText,
+    clearNewImages,
+  } = useMultiImageSelection({ maxImages: MAX_HONOR_IMAGES, imageLabel: '榮譽照片' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -66,15 +78,31 @@ export default function HonorManagement({ dashboard, onNotice }) {
     setSaving(true)
     try {
       if (editingGroupId) {
-        await updateHonorGroup({ honorGroupId: editingGroupId, ...form })
+        const editingItem = honors.find((item) => item.honorGroupId === editingGroupId)
+        await updateHonorGroup({
+          honorGroupId: editingGroupId,
+          classId: dashboard.classInfo.id,
+          ...form,
+          imageFiles: newImages.map((image) => image.file),
+          imageAltTexts: newImages.map((image) => image.altText),
+          existingImages,
+          currentImagePaths: (editingItem?.images || []).map((image) => image.path),
+        })
       } else {
-        await createHonorEntries({ classId: dashboard.classInfo.id, ...form })
+        await createHonorEntries({
+          classId: dashboard.classInfo.id,
+          ...form,
+          imageFiles: newImages.map((image) => image.file),
+          imageAltTexts: newImages.map((image) => image.altText),
+        })
       }
       const selectedNames = students
         .filter((item) => form.studentIds.includes(item.id))
         .map((item) => item.fullName)
       const title = form.title.trim()
       setForm(emptyForm())
+      setExistingImages([])
+      clearNewImages()
       const wasEditing = Boolean(editingGroupId)
       setEditingGroupId('')
       await load()
@@ -90,6 +118,8 @@ export default function HonorManagement({ dashboard, onNotice }) {
 
   function startEditing(item) {
     setEditingGroupId(item.honorGroupId)
+    setExistingImages(item.images || [])
+    clearNewImages()
     setForm({
       studentIds: [...item.studentIds],
       title: item.title,
@@ -102,6 +132,8 @@ export default function HonorManagement({ dashboard, onNotice }) {
   function cancelEditing() {
     setEditingGroupId('')
     setForm(emptyForm())
+    setExistingImages([])
+    clearNewImages()
   }
 
   async function toggleVisibility(item) {
@@ -123,7 +155,10 @@ export default function HonorManagement({ dashboard, onNotice }) {
     if (!window.confirm(`確定要永久刪除「${label}」嗎？刪除後無法復原。`)) return
     setDeletingId(item.id)
     try {
-      await deleteHonorGroup({ honorGroupId: item.honorGroupId })
+      await deleteHonorGroup({
+        honorGroupId: item.honorGroupId,
+        imagePaths: (item.images || []).map((image) => image.path),
+      })
       if (editingGroupId === item.honorGroupId) cancelEditing()
       await load()
       onNotice('success', `榮譽紀錄「${label}」已刪除。`)
@@ -156,6 +191,22 @@ export default function HonorManagement({ dashboard, onNotice }) {
           </fieldset>
           <label><span>榮譽名稱</span><input required maxLength="80" value={form.title} placeholder="例如：校內作文比賽第一名" onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
           <label><span>榮譽事蹟（選填）</span><textarea rows="5" maxLength="1000" value={form.description} placeholder="簡要說明獲獎事蹟" onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+          <MultiImageField
+            label="榮譽照片"
+            existingImages={existingImages}
+            newImages={newImages}
+            maxImages={MAX_HONOR_IMAGES}
+            onAddFiles={(files) => {
+              const error = addImageFiles(files, existingImages.length, form.title)
+              if (error) onNotice('error', error)
+            }}
+            onRemoveExisting={(path) => setExistingImages((current) => current.filter((image) => image.path !== path))}
+            onExistingAltTextChange={(path, altText) => setExistingImages((current) => current.map((image) => (
+              image.path === path ? { ...image, altText } : image
+            )))}
+            onRemoveNew={removeNewImage}
+            onNewAltTextChange={updateNewImageAltText}
+          />
           <label><span>榮譽日期</span><input required type="date" value={form.awardedOn} onChange={(event) => setForm({ ...form, awardedOn: event.target.value })} /></label>
           <div className="honor-form-actions">
             {editingGroupId && <button className="secondary-button" type="button" disabled={saving} onClick={cancelEditing}><X />取消編輯</button>}
@@ -175,6 +226,7 @@ export default function HonorManagement({ dashboard, onNotice }) {
                   <div className="honor-student-names">{item.studentDisplayNames.map((name, index) => <span className="honor-student-name" key={item.studentIds[index]}>{name}</span>)}{!item.isVisible && <span className="honor-hidden-label">已隱藏</span>}</div>
                   <h3>{item.title}</h3>
                   {item.description && <p>{item.description}</p>}
+                  <ContentImageGallery images={item.images || []} className="is-honor" />
                   <small><CalendarDays />{item.awardedOn}</small>
                 </div>
                 <div className="honor-card-actions">
