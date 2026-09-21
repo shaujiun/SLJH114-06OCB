@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, ListChecks, MonitorUp, Pencil, Plus, RefreshCw, RotateCcw, Save, Send, UserRoundCheck, X } from 'lucide-react'
+import { Ban, BookOpenCheck, CalendarClock, CalendarSearch, CheckCheck, ListChecks, MonitorUp, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, Send, UserRoundCheck, X } from 'lucide-react'
 import {
   buildMissingAssignmentReport,
   cancelAssignment,
@@ -23,6 +23,7 @@ import {
 } from '../lib/assignmentBoard.js'
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
+import { filterMissingStudentRows, renderMissingAssignmentPrintHtml } from '../lib/missingAssignmentReport.js'
 
 function nextDay(date) {
   if (!date) return ''
@@ -146,6 +147,9 @@ export default function AssignmentManagement({
   const [showCancelledAssignments, setShowCancelledAssignments] = useState(false)
   const [trackingAssignmentId, setTrackingAssignmentId] = useState('')
   const [showMissingReport, setShowMissingReport] = useState(false)
+  const [missingReportStartDate, setMissingReportStartDate] = useState('')
+  const [missingReportEndDate, setMissingReportEndDate] = useState('')
+  const [missingReportSeat, setMissingReportSeat] = useState('')
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
   const [boardAssignments, setBoardAssignments] = useState([])
@@ -187,10 +191,47 @@ export default function AssignmentManagement({
     () => buildMissingAssignmentReport(assignments, today),
     [assignments, today],
   )
-  const missingSubmissionCount = useMemo(
-    () => missingStudentRows.reduce((total, student) => total + student.missingCount, 0),
-    [missingStudentRows],
+  const filteredMissingStudents = useMemo(
+    () => filterMissingStudentRows(missingStudentRows, {
+      startDate: missingReportStartDate,
+      endDate: missingReportEndDate,
+      seatNumber: missingReportSeat,
+    }),
+    [missingStudentRows, missingReportStartDate, missingReportEndDate, missingReportSeat],
   )
+  const missingSeatOptions = useMemo(
+    () => [...new Set([...missingStudentRows.map((student) => student.seatNumber), ...(missingReportSeat ? [Number(missingReportSeat)] : [])])].sort((left, right) => left - right),
+    [missingStudentRows, missingReportSeat],
+  )
+  const missingDateRangeInvalid = Boolean(missingReportStartDate && missingReportEndDate && missingReportStartDate > missingReportEndDate)
+  const missingSubmissionCount = useMemo(
+    () => filteredMissingStudents.reduce((total, student) => total + student.missingCount, 0),
+    [filteredMissingStudents],
+  )
+
+  function printMissingReport() {
+    if (loading || missingDateRangeInvalid) return
+    const printWindow = window.open('', '_blank', 'width=1000,height=750')
+    if (!printWindow) {
+      setNotice({ type: 'error', message: '瀏覽器阻擋了列印視窗，請允許彈出視窗後重試。' })
+      return
+    }
+    const html = renderMissingAssignmentPrintHtml({
+      students: filteredMissingStudents,
+      termLabel: `第 ${selectedTerm?.semester || '—'} 學期`,
+      startDate: missingReportStartDate,
+      endDate: missingReportEndDate,
+      seatNumber: missingReportSeat,
+      printedAt: new Intl.DateTimeFormat('zh-TW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
+    })
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.addEventListener('load', () => {
+      printWindow.focus()
+      printWindow.print()
+    }, { once: true })
+    printWindow.document.close()
+  }
 
   const load = useCallback(async () => {
     if (!termId) return
@@ -249,6 +290,9 @@ export default function AssignmentManagement({
   function changeTerm(nextTermId) {
     setTermId(nextTermId)
     setShowMissingReport(false)
+    setMissingReportStartDate('')
+    setMissingReportEndDate('')
+    setMissingReportSeat('')
     setNotice(null)
   }
 
@@ -533,15 +577,23 @@ export default function AssignmentManagement({
             <h3 id="all-missing-assignment-report-title">個人缺交名單</h3>
             <p>只列截止日為今日或之前・依座號由小到大顯示・第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
           </div>
-          <strong>{missingStudentRows.length} 位學生・{missingSubmissionCount} 筆缺交</strong>
+          <strong>{filteredMissingStudents.length} 位學生・{missingSubmissionCount} 筆缺交</strong>
         </div>
+        <div className="assignment-missing-report-filters">
+          <label>起始日期<input type="date" value={missingReportStartDate} max={missingReportEndDate || undefined} onChange={(event) => setMissingReportStartDate(event.target.value)} /></label>
+          <label>結束日期<input type="date" value={missingReportEndDate} min={missingReportStartDate || undefined} onChange={(event) => setMissingReportEndDate(event.target.value)} /></label>
+          <label>學生座號<select value={missingReportSeat} onChange={(event) => setMissingReportSeat(event.target.value)}><option value="">全班</option>{missingSeatOptions.map((seat) => <option value={seat} key={seat}>{seat} 號</option>)}</select></label>
+          <button type="button" disabled={loading || missingDateRangeInvalid} onClick={printMissingReport}><Printer aria-hidden="true" />列印／存成 PDF</button>
+        </div>
+        <p className="assignment-missing-report-hint">日期留空代表不限制；日期以作業日期為準。列印視窗中可選擇「另存為 PDF」。</p>
+        {missingDateRangeInvalid && <p className="assignment-missing-report-error" role="alert">結束日期不可早於起始日期。</p>}
         {loading ? (
           <div className="assignment-missing-report-empty"><RefreshCw className="is-spinning" />整理缺交名單中…</div>
-        ) : missingStudentRows.length ? (
+        ) : filteredMissingStudents.length ? (
           <div className="assignment-missing-report-table-wrap">
             <table>
               <thead><tr><th scope="col">座號</th><th scope="col">缺交作業</th></tr></thead>
-              <tbody>{missingStudentRows.map((student) => <tr key={student.seatNumber}>
+              <tbody>{filteredMissingStudents.map((student) => <tr key={student.seatNumber}>
                 <td data-label="座號"><strong>{student.seatNumber} 號</strong><small>{student.missingCount} 筆</small></td>
                 <td data-label="缺交作業"><ul className="assignment-missing-person-items">{student.assignments.map((assignment) => <li key={assignment.id}>
                   <time dateTime={assignment.assignmentDate}>{formatAssignmentDate(assignment.assignmentDate)}</time>
@@ -552,7 +604,7 @@ export default function AssignmentManagement({
             </table>
           </div>
         ) : (
-          <div className="assignment-missing-report-empty"><CheckCheck aria-hidden="true" /><strong>目前沒有缺交作業</strong><span>所有已登記作業都已完成繳交。</span></div>
+          <div className="assignment-missing-report-empty"><CheckCheck aria-hidden="true" /><strong>沒有符合條件的缺交作業</strong><span>可調整日期或座號後再查看。</span></div>
         )}
       </section>}
       {allowQuizReminders && termId && (

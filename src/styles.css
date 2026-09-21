@@ -2465,6 +2465,67 @@ footer {
   white-space: nowrap;
 }
 
+.assignment-missing-report-filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.assignment-missing-report-filters label {
+  display: grid;
+  gap: 5px;
+  min-width: 145px;
+  color: #5f452c;
+  font-weight: 800;
+}
+
+.assignment-missing-report-filters input,
+.assignment-missing-report-filters select {
+  min-height: 42px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: #fff;
+  border: 1.5px solid #b8996b;
+  border-radius: 9px;
+  font: inherit;
+}
+
+.assignment-missing-report-filters button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  color: #fff;
+  background: #36594f;
+  border: 1.5px solid var(--ink);
+  border-radius: 9px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.assignment-missing-report-filters button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.assignment-missing-report-filters button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.assignment-missing-report-hint,
+.assignment-missing-report-error {
+  margin: -8px 0 0;
+  font-size: 0.9rem;
+}
+
+.assignment-missing-report-hint { color: #6b6257; }
+.assignment-missing-report-error { color: #a22e2e; font-weight: 800; }
+
 .assignment-missing-report-table-wrap {
   overflow-x: auto;
   border: 1.5px solid #d8bd8c;
@@ -5647,6 +5708,15 @@ footer {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .assignment-missing-report-filters label {
+    flex: 1 1 135px;
+    min-width: 0;
+  }
+
+  .assignment-missing-report-filters button {
+    width: 100%;
   }
 
   .assignment-missing-report-table-wrap {
