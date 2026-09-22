@@ -149,7 +149,7 @@ export default function AssignmentManagement({
   const [showMissingReport, setShowMissingReport] = useState(false)
   const [missingReportStartDate, setMissingReportStartDate] = useState('')
   const [missingReportEndDate, setMissingReportEndDate] = useState('')
-  const [missingReportSeat, setMissingReportSeat] = useState('')
+  const [missingReportSeats, setMissingReportSeats] = useState([])
   const [selectedAssignmentDate, setSelectedAssignmentDate] = useState('')
   const [showAssignmentBoard, setShowAssignmentBoard] = useState(false)
   const [boardAssignments, setBoardAssignments] = useState([])
@@ -195,23 +195,29 @@ export default function AssignmentManagement({
     () => filterMissingStudentRows(missingStudentRows, {
       startDate: missingReportStartDate,
       endDate: missingReportEndDate,
-      seatNumber: missingReportSeat,
+      seatNumbers: missingReportSeats,
     }),
-    [missingStudentRows, missingReportStartDate, missingReportEndDate, missingReportSeat],
+    [missingStudentRows, missingReportStartDate, missingReportEndDate, missingReportSeats],
   )
   const missingSeatOptions = useMemo(
     () => [...new Set([
       ...audienceStudents.map((student) => Number(student.seatNumber)),
       ...missingStudentRows.map((student) => student.seatNumber),
-      ...(missingReportSeat ? [Number(missingReportSeat)] : []),
+      ...missingReportSeats,
     ].filter((seat) => Number.isInteger(seat) && seat > 0))].sort((left, right) => left - right),
-    [audienceStudents, missingStudentRows, missingReportSeat],
+    [audienceStudents, missingStudentRows, missingReportSeats],
   )
   const missingDateRangeInvalid = Boolean(missingReportStartDate && missingReportEndDate && missingReportStartDate > missingReportEndDate)
   const missingSubmissionCount = useMemo(
     () => filteredMissingStudents.reduce((total, student) => total + student.missingCount, 0),
     [filteredMissingStudents],
   )
+
+  function toggleMissingSeat(seatNumber) {
+    setMissingReportSeats((current) => current.includes(seatNumber)
+      ? current.filter((seat) => seat !== seatNumber)
+      : [...current, seatNumber].sort((left, right) => left - right))
+  }
 
   function printMissingReport() {
     if (loading || missingDateRangeInvalid) return
@@ -225,7 +231,7 @@ export default function AssignmentManagement({
       termLabel: `第 ${selectedTerm?.semester || '—'} 學期`,
       startDate: missingReportStartDate,
       endDate: missingReportEndDate,
-      seatNumber: missingReportSeat,
+      seatNumbers: missingReportSeats,
       printedAt: new Intl.DateTimeFormat('zh-TW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
     })
     printWindow.document.open()
@@ -296,7 +302,7 @@ export default function AssignmentManagement({
     setShowMissingReport(false)
     setMissingReportStartDate('')
     setMissingReportEndDate('')
-    setMissingReportSeat('')
+    setMissingReportSeats([])
     setNotice(null)
   }
 
@@ -567,7 +573,7 @@ export default function AssignmentManagement({
       <div className="student-page-heading">
         <div><p className="eyebrow">{isHelperMode ? 'CLASS HELPER' : 'ASSIGNMENTS'}</p><h2>{isHelperMode ? '幹部作業登記' : '作業管理'}</h2><p>{isHelperMode ? '只能操作導師指派的科目，第一階段登記會立即生效。' : '可發布共同、分組或個別學生作業；發布後會保存當時的作業對象。'}</p></div>
         {(allowAssignmentBoard || allowPreviousDayBoard || !hideTermPicker || !isHelperMode) && <div className="assignment-heading-actions">
-          {!isHelperMode && <button className="assignment-board-launch is-missing-report" type="button" aria-expanded={showMissingReport} aria-controls="all-missing-assignment-report" onClick={() => setShowMissingReport((current) => !current)}><ListChecks aria-hidden="true" />{showMissingReport ? '收合缺交名單' : '按座號看缺交'}</button>}
+          {!isHelperMode && <button className="assignment-board-launch is-missing-report" type="button" aria-expanded={showMissingReport} aria-controls="all-missing-assignment-report" onClick={() => setShowMissingReport((current) => !current)}><ListChecks aria-hidden="true" />{showMissingReport ? '收合缺交名單' : '查看缺交名單'}</button>}
           {allowAssignmentBoard && <button className="assignment-board-launch" type="button" onClick={openAssignmentBoard}><MonitorUp aria-hidden="true" />全畫面顯示作業</button>}
           {allowPreviousDayBoard && <button className="assignment-board-launch is-previous-day" type="button" onClick={openPreviousDayBoard}><CalendarSearch aria-hidden="true" />前一日聯絡簿</button>}
           {!hideTermPicker && <label className="term-picker"><span>查看學期</span><select value={termId} onChange={(event) => changeTerm(event.target.value)}>{dashboard.terms.map((term) => <option value={term.id} key={term.id}>第 {term.semester} 學期</option>)}</select></label>}
@@ -578,7 +584,7 @@ export default function AssignmentManagement({
         <div className="assignment-missing-report-heading">
           <div>
             <p className="eyebrow">MISSING ASSIGNMENTS</p>
-            <h3 id="all-missing-assignment-report-title">個人缺交名單</h3>
+            <h3 id="all-missing-assignment-report-title">作業缺交名單</h3>
             <p>只列截止日為今日或之前・依座號由小到大顯示・第 {selectedTerm?.semester || '—'} 學期・目前可管理科目</p>
           </div>
           <strong>{filteredMissingStudents.length} 位學生・{missingSubmissionCount} 筆缺交</strong>
@@ -586,26 +592,28 @@ export default function AssignmentManagement({
         <div className="assignment-missing-report-filters">
           <label>起始日期<input type="date" value={missingReportStartDate} max={missingReportEndDate || undefined} onChange={(event) => setMissingReportStartDate(event.target.value)} /></label>
           <label>結束日期<input type="date" value={missingReportEndDate} min={missingReportStartDate || undefined} onChange={(event) => setMissingReportEndDate(event.target.value)} /></label>
-          <label>學生座號<select value={missingReportSeat} onChange={(event) => setMissingReportSeat(event.target.value)}><option value="">全班</option>{missingSeatOptions.map((seat) => <option value={seat} key={seat}>{seat} 號</option>)}</select></label>
+          <details className="assignment-missing-seat-filter">
+            <summary>座號篩選：{missingReportSeats.length ? `已選 ${missingReportSeats.length} 位` : '全部'}</summary>
+            <div className="assignment-missing-seat-options">
+              <button type="button" onClick={() => setMissingReportSeats([])}>清除篩選，顯示全部</button>
+              <div>{missingSeatOptions.map((seat) => <label key={seat}><input type="checkbox" checked={missingReportSeats.includes(seat)} onChange={() => toggleMissingSeat(seat)} />{seat} 號</label>)}</div>
+            </div>
+          </details>
           <button type="button" disabled={loading || missingDateRangeInvalid} onClick={printMissingReport}><Printer aria-hidden="true" />列印／存成 PDF</button>
         </div>
-        <p className="assignment-missing-report-hint">日期留空代表不限制；日期以作業日期為準。列印視窗中可選擇「另存為 PDF」。</p>
+        <p className="assignment-missing-report-hint">日期留空代表不限制；座號未勾選代表全部。日期以作業日期為準，列印視窗中可選擇「另存為 PDF」。</p>
         {missingDateRangeInvalid && <p className="assignment-missing-report-error" role="alert">結束日期不可早於起始日期。</p>}
         {loading ? (
           <div className="assignment-missing-report-empty"><RefreshCw className="is-spinning" />整理缺交名單中…</div>
         ) : filteredMissingStudents.length ? (
-          <div className="assignment-missing-report-table-wrap">
-            <table>
-              <thead><tr><th scope="col">座號</th><th scope="col">缺交作業</th></tr></thead>
-              <tbody>{filteredMissingStudents.map((student) => <tr key={student.seatNumber}>
-                <td data-label="座號"><strong>{student.seatNumber} 號</strong><small>{student.missingCount} 筆</small></td>
-                <td data-label="缺交作業"><ul className="assignment-missing-person-items">{student.assignments.map((assignment) => <li key={assignment.id}>
-                  <time dateTime={assignment.assignmentDate}>{formatAssignmentDate(assignment.assignmentDate)}</time>
-                  <span>{assignment.subjectName}</span>
-                  <strong>{assignment.content}</strong>
-                </li>)}</ul></td>
-              </tr>)}</tbody>
-            </table>
+          <div className="assignment-missing-student-grid">
+            {filteredMissingStudents.map((student) => <article className="assignment-missing-student-card" key={student.seatNumber}>
+              <header><strong>{student.seatNumber} 號</strong><small>{student.missingCount} 筆缺交</small></header>
+              <ul className="assignment-missing-person-items">{student.assignments.map((assignment) => <li key={assignment.id}>
+                <div><time dateTime={assignment.assignmentDate}>{formatAssignmentDate(assignment.assignmentDate)}</time><span>{assignment.subjectName}</span></div>
+                <strong>{assignment.content}</strong>
+              </li>)}</ul>
+            </article>)}
           </div>
         ) : (
           <div className="assignment-missing-report-empty"><CheckCheck aria-hidden="true" /><strong>沒有符合條件的缺交作業</strong><span>可調整日期或座號後再查看。</span></div>

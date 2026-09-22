@@ -2517,6 +2517,69 @@ footer {
   height: 18px;
 }
 
+.assignment-missing-seat-filter {
+  position: relative;
+  min-width: 190px;
+}
+
+.assignment-missing-seat-filter summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: #fff;
+  border: 1.5px solid #b8996b;
+  border-radius: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.assignment-missing-seat-options {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 5px);
+  width: min(330px, 90vw);
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #fffdf8;
+  border: 1.5px solid #b8996b;
+  border-radius: 10px;
+  box-shadow: 2px 5px 12px #2c342b30;
+}
+
+.assignment-missing-seat-options > button {
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 8px;
+  color: #36594f;
+  background: #eaf3ed;
+}
+
+.assignment-missing-seat-options > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.assignment-missing-seat-options label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.assignment-missing-seat-options input {
+  min-height: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
 .assignment-missing-report-hint,
 .assignment-missing-report-error {
   margin: -8px 0 0;
@@ -2526,73 +2589,64 @@ footer {
 .assignment-missing-report-hint { color: #6b6257; }
 .assignment-missing-report-error { color: #a22e2e; font-weight: 800; }
 
-.assignment-missing-report-table-wrap {
-  overflow-x: auto;
-  border: 1.5px solid #d8bd8c;
-  border-radius: 14px;
+.assignment-missing-student-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
 }
 
-.assignment-missing-report table {
-  width: 100%;
-  min-width: 620px;
-  border-collapse: collapse;
+.assignment-missing-student-card {
+  min-width: 0;
+  overflow: hidden;
   background: #fffdf8;
+  border: 1.5px solid #d8bd8c;
+  border-radius: 13px;
 }
 
-.assignment-missing-report th,
-.assignment-missing-report td {
-  padding: 13px 15px;
-  text-align: left;
-  vertical-align: top;
-  border-bottom: 1px solid #e6d8bf;
-}
-
-.assignment-missing-report th {
-  color: #5f452c;
+.assignment-missing-student-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 13px;
   background: #f7e8cb;
-  font-size: 0.9rem;
-  letter-spacing: 0.04em;
 }
 
-.assignment-missing-report tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.assignment-missing-report td:first-child {
-  width: 120px;
-  white-space: nowrap;
-}
-
-.assignment-missing-report td:first-child > strong {
-  display: block;
+.assignment-missing-student-card header strong {
   color: #8b3e2e;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
-.assignment-missing-report td:first-child > small {
-  display: block;
-  margin-top: 3px;
+.assignment-missing-student-card header small {
   color: #75695c;
+  white-space: nowrap;
 }
 
 .assignment-missing-person-items {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 10px 13px;
   list-style: none;
 }
 
 .assignment-missing-person-items li {
   display: grid;
-  grid-template-columns: 145px max-content minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .assignment-missing-person-items li + li {
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px dashed #ddccb0;
+}
+
+.assignment-missing-person-items li > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 8px;
 }
 
 .assignment-missing-person-items time {
@@ -2602,7 +2656,7 @@ footer {
 
 .assignment-missing-person-items span {
   display: inline-flex;
-  padding: 3px 8px;
+  padding: 2px 7px;
   color: #276155;
   background: #e2f4ec;
   border-radius: 999px;
@@ -5719,76 +5773,31 @@ footer {
     width: 100%;
   }
 
-  .assignment-missing-report-table-wrap {
-    overflow: visible;
-    border: 0;
-  }
-
-  .assignment-missing-report table,
-  .assignment-missing-report tbody,
-  .assignment-missing-report tr,
-  .assignment-missing-report td {
-    display: block;
+  .assignment-missing-seat-filter {
     width: 100%;
-    min-width: 0;
   }
 
-  .assignment-missing-report thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  .assignment-missing-report tbody {
-    display: grid;
-    gap: 12px;
-  }
-
-  .assignment-missing-report tr {
-    padding: 13px;
-    background: #fffdf8;
-    border: 1.5px solid #d8bd8c;
-    border-radius: 13px;
-  }
-
-  .assignment-missing-report td,
-  .assignment-missing-report td:first-child,
-  .assignment-missing-report td:last-child {
-    display: grid;
+  .assignment-missing-seat-options {
     width: 100%;
-    grid-template-columns: 86px minmax(0, 1fr);
+  }
+
+  .assignment-missing-student-grid {
     gap: 8px;
-    padding: 6px 0;
-    border: 0;
-    white-space: normal;
   }
 
-  .assignment-missing-report td::before {
-    content: attr(data-label);
-    color: #75695c;
-    font-size: 0.85rem;
-    font-weight: 900;
+  .assignment-missing-student-card header,
+  .assignment-missing-person-items {
+    padding: 8px;
   }
 
-  .assignment-missing-report td:first-child > strong,
-  .assignment-missing-report td:first-child > small,
-  .assignment-missing-report td:last-child > .assignment-missing-person-items {
-    grid-column: 2;
+  .assignment-missing-person-items {
+    font-size: 0.86rem;
   }
 
-  .assignment-missing-person-items li {
-    grid-template-columns: minmax(0, 1fr) max-content;
-    gap: 5px 8px;
-  }
-
-  .assignment-missing-person-items span {
-    width: fit-content;
-  }
-
-  .assignment-missing-person-items strong {
-    grid-column: 1 / -1;
+  .assignment-missing-student-card header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
   }
 
   .student-helper-launch {
