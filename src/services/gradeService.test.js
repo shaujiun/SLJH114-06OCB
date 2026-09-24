@@ -213,6 +213,38 @@ describe('成績交叉比較與長期趨勢', () => {
       first: expect.objectContaining({ value: 56 }),
     })
   })
+
+  it('三次以上成績以最近一次對前一次比較，不再對第一次', () => {
+    const previousResult = {
+      ...termResult,
+      examId: 'term-2',
+      exam: { label: '八-1 二段', examType: 'term', sortOrder: 8 },
+      mathScore: 90,
+      classRank: 5,
+    }
+    const latestResult = {
+      ...termResult,
+      examId: 'term-3',
+      exam: { label: '八-2 一段', examType: 'term', sortOrder: 9 },
+      mathScore: 80,
+      classRank: 8,
+    }
+    const progress = buildLongTermGradeProgress([termResult, previousResult, latestResult])
+    expect(progress.subjects.find((subject) => subject.key === 'mathScore')).toMatchObject({
+      first: expect.objectContaining({ value: 60 }),
+      previous: expect.objectContaining({ value: 90 }),
+      latest: expect.objectContaining({ value: 80 }),
+      totalChange: 20,
+      recentChange: -10,
+    })
+    expect(progress.ranks.find((rank) => rank.key === 'classRank')).toMatchObject({
+      first: expect.objectContaining({ value: 12 }),
+      previous: expect.objectContaining({ value: 5 }),
+      latest: expect.objectContaining({ value: 8 }),
+      totalImprovement: 4,
+      recentImprovement: -3,
+    })
+  })
 })
 
 describe('學生端排名顯示設定', () => {

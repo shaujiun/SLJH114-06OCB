@@ -36,12 +36,35 @@ describe('學生端成績比較介面', () => {
     expect(html).toContain('老師發布模擬考成績後')
   })
 
-  it('顯示各科與排名長期進退步摘要', () => {
+  it('顯示各科近期進退步與排名趨勢摘要', () => {
     const html = renderToStaticMarkup(<GradeProgressSummary results={results} rankVisibility={{ showClassRank: true, showSchoolRank: true }} />)
-    expect(html).toContain('各科長期進退步')
+    expect(html).toContain('各科近期進退步')
     expect(html).toContain('班排與校排趨勢')
     expect(html).toContain('進步 10 分')
     expect(html).toContain('進步 4 名')
+  })
+
+  it('有三次成績時顯示前次到最近的變化，不以第一次為基準', () => {
+    const threeResults = [
+      results[0],
+      {
+        ...results[0], id: 'result-term-2', examId: 'term-2',
+        exam: { label: '八-1 二段', examType: 'term', sortOrder: 8 },
+        mathScore: 90, classRank: 5,
+      },
+      {
+        ...results[0], id: 'result-term-3', examId: 'term-3',
+        exam: { label: '八-2 一段', examType: 'term', sortOrder: 9 },
+        mathScore: 80, classRank: 8,
+      },
+    ]
+    const html = renderToStaticMarkup(<GradeProgressSummary results={threeResults} rankVisibility={{ showClassRank: true, showSchoolRank: false }} />)
+    expect(html).toContain('各科近期進退步')
+    expect(html).toContain('前次')
+    expect(html).toContain('歷次平均')
+    expect(html).toContain('退步 10 分')
+    expect(html).toContain('退步 3 名')
+    expect(html).not.toContain('以第一次有成績的考試')
   })
 
   it('導師關閉排名後不輸出班排與校排內容', () => {

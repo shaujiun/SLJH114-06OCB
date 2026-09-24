@@ -34,17 +34,17 @@ export default function GradeProgressSummary({ results, rankVisibility = {} }) {
     rank.key === 'classRank' ? rankVisibility.showClassRank : rankVisibility.showSchoolRank
   ))
   return <div className="grade-progress-summary">
-    <div className="grade-progress-heading"><Route /><div><h3>各科長期進退步</h3><p>以第一次有成績的考試與最近一次比較，缺考不列入計算。</p></div></div>
+    <div className="grade-progress-heading"><Route /><div><h3>各科近期進退步</h3><p>最近一次與前一次有成績的考試比較；缺考不列入，並保留歷次平均供參考。</p></div></div>
     <div className="grade-progress-subjects">{progress.subjects.map((subject) => <article key={subject.key}>
       <div><strong>{subject.label}</strong><span>{subject.points.length} 次資料</span></div>
-      <p>最初 <b>{subject.first?.value ?? '—'}</b><i>→</i>最近 <b>{subject.latest?.value ?? '—'}</b></p>
-      <Change value={subject.totalChange} />
-      <small>平均 {subject.average ?? '—'} 分・最高 {subject.best?.value ?? '—'} 分</small>
+      <p>前次 <b>{subject.previous?.value ?? '—'}</b><i>→</i>最近 <b>{subject.latest?.value ?? '—'}</b></p>
+      <Change value={subject.recentChange} />
+      <small>歷次平均 {subject.average ?? '—'} 分・最高 {subject.best?.value ?? '—'} 分</small>
     </article>)}</div>
 
     {visibleRanks.length > 0 && <>
       <div className="grade-rank-heading"><Award /><div><h3>{visibleRanks.map((rank) => rank.label).join('與')}趨勢</h3><p>名次數字越小越前面；尚未匯入的排名不列入。</p></div></div>
-      <div className="grade-rank-summary">{visibleRanks.map((rank) => <article key={rank.key}><span>{rank.label}</span><strong>{rank.first?.value ? `第 ${rank.first.value} 名` : '尚無資料'} → {rank.latest?.value ? `第 ${rank.latest.value} 名` : '尚無資料'}</strong><Change value={rank.totalImprovement} unit="名" /></article>)}</div>
+      <div className="grade-rank-summary">{visibleRanks.map((rank) => <article key={rank.key}><span>{rank.label}（前次 → 最近）</span><strong>{rank.previous?.value ? `第 ${rank.previous.value} 名` : '尚無前次資料'} → {rank.latest?.value ? `第 ${rank.latest.value} 名` : '尚無資料'}</strong><Change value={rank.recentImprovement} unit="名" /></article>)}</div>
       <RankTrendChart results={results} ranks={visibleRanks} />
     </>}
   </div>
