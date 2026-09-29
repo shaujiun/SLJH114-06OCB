@@ -897,6 +897,41 @@ export async function recordIndividualSubmission({ assignmentId, studentId, stag
   return recordIndividualAssignmentStatus({ assignmentId, studentId, stage, status: 'submitted' })
 }
 
+export async function recordAssignmentStatusesBatch({
+  assignmentId,
+  stage = 'teacher',
+  updates = [],
+}) {
+  if (!updates.length) throw new Error('目前沒有需要儲存的繳交狀態變更。')
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('record_assignment_statuses_batch', {
+    p_assignment_id: assignmentId,
+    p_stage: stage,
+    p_updates: updates.map((item) => ({
+      student_id: item.studentId,
+      status: item.status,
+      follow_up_due_at: item.followUpDueAt ? new Date(item.followUpDueAt).toISOString() : null,
+    })),
+  })
+  if (error) {
+    const databaseMessage = error.message || ''
+    if (databaseMessage.includes('submission_permission_required')) {
+      throw new Error('目前帳號沒有修改這些學生繳交狀態的權限。')
+    }
+    if (databaseMessage.includes('helper_cannot_resolve_existing_exception')) {
+      throw new Error('已有紀錄的學生，需由任課老師或導師修改狀態。')
+    }
+    if (databaseMessage.includes('invalid_assignment_recipient')) {
+      throw new Error('批次名單中有學生不屬於這份作業，請重新整理。')
+    }
+    if (databaseMessage.includes('invalid_status_batch') || databaseMessage.includes('invalid_individual_status')) {
+      throw new Error('請確認所有個別繳交狀態及補交期限。')
+    }
+    throw new Error('個別繳交狀態批次儲存失敗，請重新整理後再試。')
+  }
+  return data
+}
+
 export async function recordIndividualAssignmentStatus({
   assignmentId,
   studentId,

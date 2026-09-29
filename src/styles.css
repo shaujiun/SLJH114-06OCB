@@ -3379,6 +3379,12 @@ footer {
   border-color: #6f5ac7;
 }
 
+.submission-student-list article.is-dirty {
+  background: #fffbea;
+  border-color: #d59a32;
+  box-shadow: inset 4px 0 0 #e4a52e;
+}
+
 .submission-student-list article.is-follow-up-overdue {
   background: #fff8f1;
   border-color: #d97852;
@@ -3391,6 +3397,16 @@ footer {
 }
 .submission-student-identity strong { font-size: 9px; overflow-wrap: anywhere; }
 .submission-student-identity small { color: #6d6774; font-size: 7px; }
+.submission-unsaved-badge {
+  width: fit-content;
+  margin-top: 3px;
+  padding: 2px 6px;
+  color: #75470b;
+  background: #ffe7aa;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 900;
+}
 .submission-locked-hint {
   grid-column: 1 / -1;
   color: #7c6130;
@@ -3530,35 +3546,6 @@ footer {
   justify-items: stretch;
   gap: 7px;
   min-width: 0;
-}
-
-.submission-individual-submit-button {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 6px 10px;
-  color: #215c4d;
-  background: #e1f6ec;
-  border: 1px solid #78bda7;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 900;
-}
-
-.submission-individual-submit-button:hover:not(:disabled) {
-  background: #ccebdd;
-}
-
-.submission-individual-submit-button:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.submission-individual-submit-button svg {
-  width: 16px;
-  flex: 0 0 auto;
 }
 
 .submission-tracking-panel > footer {

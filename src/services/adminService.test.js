@@ -18,6 +18,7 @@ import {
   mapClassSubjectRow,
   regenerateStudentActivation,
   publishAssignment,
+  recordAssignmentStatusesBatch,
   recordIndividualAssignmentStatus,
   recordIndividualSubmission,
   recordSubmissionCheck,
@@ -676,6 +677,33 @@ describe('作業繳交確認服務', () => {
       p_stage: 'teacher',
       p_status: 'pending',
       p_follow_up_due_at: null,
+    })
+  })
+
+  it('一次送出所有已修改學生的繳交狀態', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { updatedCount: 2, lateCount: 0, openExceptionCount: 1 },
+      error: null,
+    })
+    requireSupabase.mockReturnValue({ rpc })
+
+    await recordAssignmentStatusesBatch({
+      assignmentId: 'assignment-id',
+      stage: 'teacher',
+      updates: [
+        { studentId: 'student-1', status: 'submitted', followUpDueAt: '' },
+        { studentId: 'student-2', status: 'leave', followUpDueAt: '2026-10-02T16:00' },
+      ],
+    })
+
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith('record_assignment_statuses_batch', {
+      p_assignment_id: 'assignment-id',
+      p_stage: 'teacher',
+      p_updates: [
+        { student_id: 'student-1', status: 'submitted', follow_up_due_at: null },
+        { student_id: 'student-2', status: 'leave', follow_up_due_at: new Date('2026-10-02T16:00').toISOString() },
+      ],
     })
   })
 })
