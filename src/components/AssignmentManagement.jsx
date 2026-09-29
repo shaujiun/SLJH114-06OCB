@@ -24,6 +24,7 @@ import {
 import DailyQuizReminderManagement from './DailyQuizReminderManagement.jsx'
 import SubmissionTrackingPanel from './SubmissionTrackingPanel.jsx'
 import { filterMissingStudentRows, renderMissingAssignmentPrintHtml } from '../lib/missingAssignmentReport.js'
+import { formatAssignmentDueMonthDay, isPastAssignmentDue } from '../lib/assignmentDeadline.js'
 
 function nextDay(date) {
   if (!date) return ''
@@ -609,10 +610,14 @@ export default function AssignmentManagement({
           <div className="assignment-missing-student-grid">
             {filteredMissingStudents.map((student) => <article className="assignment-missing-student-card" key={student.seatNumber}>
               <header><strong>{student.seatNumber} 號</strong><small>{student.missingCount} 筆缺交</small></header>
-              <ul className="assignment-missing-person-items">{student.assignments.map((assignment) => <li key={assignment.id}>
-                <div><time dateTime={assignment.assignmentDate}>{formatAssignmentDate(assignment.assignmentDate)}</time><span>{assignment.subjectName}</span></div>
-                <strong>{assignment.content}</strong>
-              </li>)}</ul>
+              <ul className="assignment-missing-person-items">{student.assignments.map((assignment) => {
+                const overdue = isPastAssignmentDue(assignment.dueAt)
+                const dueMonthDay = overdue ? formatAssignmentDueMonthDay(assignment.dueAt) : ''
+                return <li className={overdue ? 'is-overdue' : undefined} key={assignment.id}>
+                  <div><time dateTime={assignment.assignmentDate}>{formatAssignmentDate(assignment.assignmentDate)}</time><span>{assignment.subjectName}</span></div>
+                  <div className="assignment-missing-person-title"><strong>{assignment.content}</strong>{dueMonthDay && <time dateTime={assignment.dueAt}>{dueMonthDay}</time>}</div>
+                </li>
+              })}</ul>
             </article>)}
           </div>
         ) : (

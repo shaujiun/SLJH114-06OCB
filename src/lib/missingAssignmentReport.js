@@ -1,3 +1,5 @@
+import { formatAssignmentDueMonthDay, isPastAssignmentDue } from './assignmentDeadline.js'
+
 export function filterMissingStudentRows(rows, { startDate = '', endDate = '', seatNumbers = [] } = {}) {
   const selectedSeats = new Set(seatNumbers.map(Number))
   return (rows || [])
@@ -18,19 +20,23 @@ function escapeHtml(value) {
   })[character])
 }
 
-function renderStudentCard(student) {
-  const assignments = student.assignments.map((assignment) => `<li><time>${escapeHtml(assignment.assignmentDate)}</time><span>${escapeHtml(assignment.subjectName)}</span><strong>${escapeHtml(assignment.content)}</strong></li>`).join('')
+function renderStudentCard(student, referenceTime) {
+  const assignments = student.assignments.map((assignment) => {
+    const overdue = isPastAssignmentDue(assignment.dueAt, referenceTime)
+    const dueMonthDay = overdue ? formatAssignmentDueMonthDay(assignment.dueAt) : ''
+    return `<li${overdue ? ' class="overdue"' : ''}><time>${escapeHtml(assignment.assignmentDate)}</time><span>${escapeHtml(assignment.subjectName)}</span><div class="assignment-line"><strong>${escapeHtml(assignment.content)}</strong>${dueMonthDay ? `<time class="due">${escapeHtml(dueMonthDay)}</time>` : ''}</div></li>`
+  }).join('')
   return `<section class="card"><header><strong>${escapeHtml(student.seatNumber)} 號</strong><small>${escapeHtml(student.missingCount)} 筆缺交</small></header><ul>${assignments}</ul></section>`
 }
 
-export function renderMissingAssignmentPrintHtml({ students, termLabel, startDate = '', endDate = '', seatNumbers = [], printedAt }) {
+export function renderMissingAssignmentPrintHtml({ students, termLabel, startDate = '', endDate = '', seatNumbers = [], printedAt, referenceTime = new Date() }) {
   const dateLabel = startDate || endDate
     ? `${startDate || '最早'} ～ ${endDate || '最新'}`
     : '全部日期'
   const seatLabel = seatNumbers.length ? `${[...seatNumbers].sort((left, right) => left - right).join('、')} 號` : '全班'
   const count = students.reduce((total, student) => total + student.missingCount, 0)
   const body = students.length
-    ? Array.from({ length: Math.ceil(students.length / 2) }, (_, index) => `<div class="pair">${students.slice(index * 2, index * 2 + 2).map(renderStudentCard).join('')}</div>`).join('')
+    ? Array.from({ length: Math.ceil(students.length / 2) }, (_, index) => `<div class="pair">${students.slice(index * 2, index * 2 + 2).map((student) => renderStudentCard(student, referenceTime)).join('')}</div>`).join('')
     : '<p class="empty">此篩選條件沒有缺交紀錄。</p>'
 
   return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>作業缺交名單</title><style>
@@ -50,7 +56,10 @@ export function renderMissingAssignmentPrintHtml({ students, termLabel, startDat
     .card li + li { border-top: 1px dashed #b7c2ce; }
     .card time { display: inline-block; margin-right: 2mm; font-weight: bold; }
     .card li span { margin-right: 2mm; color: #276155; font-weight: bold; }
-    .card li strong { display: block; font-weight: 500; }
+    .assignment-line { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 2mm; }
+    .card li strong { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+    .card li .due { flex: 0 0 auto; margin: 0; font-weight: bold; white-space: nowrap; }
+    .card li.overdue .assignment-line { color: #b42318; }
     .empty { text-align: center; padding: 9mm; }
     .note { margin-top: 5mm; color: #475569; font-size: 9pt; }
     @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }

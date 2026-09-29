@@ -11,6 +11,10 @@ import {
   buildQuizReminderBoardGroups,
   quizReminderBoardDisplayText,
 } from '../services/quizReminderService.js'
+import {
+  formatAssignmentDueMonthDay,
+  isAssignmentOverdue,
+} from '../lib/assignmentDeadline.js'
 
 function QuizReminderSection({ reminders, loading, error, title = '今日成績提醒' }) {
   if (!loading && !error && reminders.length === 0) return null
@@ -34,7 +38,7 @@ function QuizReminderSection({ reminders, loading, error, title = '今日成績�
   )
 }
 
-function AssignmentGroupColumn({
+export function AssignmentGroupColumn({
   groupCode,
   assignments,
   quizReminders,
@@ -67,17 +71,19 @@ function AssignmentGroupColumn({
           <div className="assignment-board-empty"><RefreshCw className="is-spinning" aria-hidden="true" /><strong>讀取待完成座號…</strong></div>
         ) : assignments.length > 0 ? (
           <ol className="assignment-board-list">
-            {assignments.map((assignment) => (
-              <li key={assignment.id}>
+            {assignments.map((assignment) => {
+              const overdue = isAssignmentOverdue(assignment)
+              const dueMonthDay = overdue ? formatAssignmentDueMonthDay(assignment.dueAt) : ''
+              return <li className={overdue ? 'is-overdue' : undefined} key={assignment.id}>
                 <span>{assignment.subject?.name || '未設定科目'}</span>
                 <div className="assignment-board-item-copy">
-                  <strong>{assignment.content}</strong>
+                  <div className="assignment-board-item-title"><strong>{assignment.content}</strong>{dueMonthDay && <time dateTime={assignment.dueAt}>{dueMonthDay}</time>}</div>
                   {assignment.targetType === 'individual' && assignment.recipientStudents?.length > 0 && <small>個別指定：{assignment.recipientStudents.map((student) => student.seatNumber).join('、')} 號</small>}
                   {assignment.outstandingSeatNumbers?.length > 0 && <small>缺交名單：{assignment.outstandingSeatNumbers.join('、')} 號</small>}
                   {mode === 'previous-day' && isUnreviewedPreviousDayCarryover(assignment, referenceDate) && <small>尚未檢查繳交狀況</small>}
                 </div>
               </li>
-            ))}
+            })}
           </ol>
         ) : (
           <div className="assignment-board-empty">

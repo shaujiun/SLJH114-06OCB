@@ -49,6 +49,24 @@ describe('缺交名單篩選與列印', () => {
     expect(html).not.toContain('自然')
   })
 
+  it('列印時把逾期作業與月日排在同一行並標成紅色', () => {
+    const html = renderMissingAssignmentPrintHtml({
+      students: [{
+        seatNumber: 2, missingCount: 1,
+        assignments: [{
+          id: 'late', assignmentDate: '2026-09-19', dueAt: '2026-09-20T17:00:00+08:00',
+          subjectName: '數學', content: '習作 1',
+        }],
+      }],
+      termLabel: '第 1 學期', printedAt: '現在',
+      referenceTime: new Date('2026-09-21T08:00:00+08:00'),
+    })
+    expect(html).toContain('<li class="overdue">')
+    expect(html).toContain('<strong>習作 1</strong><time class="due">9/20</time>')
+    expect(html).toContain('.card li.overdue .assignment-line { color: #b42318; }')
+    expect(html).not.toContain('期限')
+  })
+
   it('列印卡片每列兩位學生，第三位接到下一列', () => {
     const third = { seatNumber: 9, missingCount: 1, assignments: [{ id: 'd', assignmentDate: '2026-09-20', subjectName: '國文', content: '閱讀' }] }
     const html = renderMissingAssignmentPrintHtml({

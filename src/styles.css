@@ -2668,6 +2668,29 @@ footer {
   overflow-wrap: anywhere;
 }
 
+.assignment-missing-person-title {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.assignment-missing-person-title > strong {
+  min-width: 0;
+}
+
+.assignment-missing-person-title > time {
+  flex: 0 0 auto;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.assignment-missing-person-items li.is-overdue .assignment-missing-person-title {
+  color: #b42318;
+}
+
 .assignment-missing-report-empty {
   display: flex;
   min-height: 110px;
@@ -5650,11 +5673,36 @@ footer {
   gap: 6px;
 }
 
-.assignment-board-item-copy > strong {
+.assignment-board-item-title {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: clamp(8px, 1vw, 14px);
+}
+
+.assignment-board-item-title > strong {
   min-width: 0;
   font-size: clamp(15pt, 2vw, 23pt);
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.assignment-board-item-title > time {
+  flex: 0 0 auto;
+  font-size: clamp(13pt, 1.6vw, 18pt);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.assignment-board-list li.is-overdue .assignment-board-item-copy {
+  color: #b42318;
+}
+
+.assignment-board-list li.is-overdue .assignment-board-item-copy > small {
+  color: #9f241b;
+  background: #fff0ee;
+  border-color: #dd8c84;
 }
 
 .assignment-board-item-copy > small {
