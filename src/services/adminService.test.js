@@ -364,29 +364,29 @@ describe('作業發布服務', () => {
       {
         seatNumber: 2,
         assignments: [{
-          id: 'older-math', assignmentDate: '2026-09-08', subjectName: '數學', content: '習作第 12 頁',
+          id: 'older-math', assignmentDate: '2026-09-08', dueAt: '', subjectName: '數學', content: '習作第 12 頁',
         }],
         missingCount: 1,
       },
       {
         seatNumber: 3,
         assignments: [{
-          id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語', content: '單字訂正',
+          id: 'newer-english', assignmentDate: '2026-09-10', dueAt: '', subjectName: '英語', content: '單字訂正',
         }],
         missingCount: 1,
       },
       {
         seatNumber: 9,
         assignments: [
-          { id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語', content: '單字訂正' },
-          { id: 'older-math', assignmentDate: '2026-09-08', subjectName: '數學', content: '習作第 12 頁' },
+          { id: 'newer-english', assignmentDate: '2026-09-10', dueAt: '', subjectName: '英語', content: '單字訂正' },
+          { id: 'older-math', assignmentDate: '2026-09-08', dueAt: '', subjectName: '數學', content: '習作第 12 頁' },
         ],
         missingCount: 2,
       },
       {
         seatNumber: 15,
         assignments: [{
-          id: 'newer-english', assignmentDate: '2026-09-10', subjectName: '英語', content: '單字訂正',
+          id: 'newer-english', assignmentDate: '2026-09-10', dueAt: '', subjectName: '英語', content: '單字訂正',
         }],
         missingCount: 1,
       },
@@ -424,15 +424,15 @@ describe('作業發布服務', () => {
       {
         seatNumber: 2,
         assignments: [
-          { id: 'same-day', assignmentDate: '2026-09-10', subjectName: '英語', content: '查詢日截止' },
-          { id: 'earlier', assignmentDate: '2026-09-08', subjectName: '數學', content: '早於查詢日' },
+          { id: 'same-day', assignmentDate: '2026-09-10', dueAt: '2026-09-10T23:59:00+08:00', subjectName: '英語', content: '查詢日截止' },
+          { id: 'earlier', assignmentDate: '2026-09-08', dueAt: '2026-09-09T23:59:00+08:00', subjectName: '數學', content: '早於查詢日' },
         ],
         missingCount: 2,
       },
       {
         seatNumber: 9,
         assignments: [
-          { id: 'same-day', assignmentDate: '2026-09-10', subjectName: '英語', content: '查詢日截止' },
+          { id: 'same-day', assignmentDate: '2026-09-10', dueAt: '2026-09-10T23:59:00+08:00', subjectName: '英語', content: '查詢日截止' },
         ],
         missingCount: 1,
       },

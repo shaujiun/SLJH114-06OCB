@@ -602,6 +602,7 @@ export function buildMissingAssignmentReport(assignments = [], referenceDate = '
     const assignmentSummary = {
       id: assignment.id,
       assignmentDate: assignment.assignmentDate || '',
+      dueAt: assignment.dueAt || '',
       subjectName: assignment.subject?.name || '未設定科目',
       content: assignment.content || '未命名作業',
     }
