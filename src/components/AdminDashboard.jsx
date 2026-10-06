@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CalendarRange,
   Check,
+  ClipboardCheck,
   ClipboardList,
   GraduationCap,
   Eye,
@@ -34,6 +35,7 @@ import TeacherManagement from './TeacherManagement.jsx'
 import CalendarManagement from './CalendarManagement.jsx'
 import GradeManagement from './GradeManagement.jsx'
 import LearningResourceManagement from './LearningResourceManagement.jsx'
+import AdmissionSelfCheckManagement from './AdmissionSelfCheckManagement.jsx'
 
 function formatDate(value) {
   if (!value) return '尚未設定'
@@ -230,6 +232,7 @@ export default function AdminDashboard({ user, onExit, learningSystemUrl }) {
           <button className={activeSection === 'calendar' ? 'is-active' : ''} type="button" onClick={() => changeSection('calendar')}><CalendarRange aria-hidden="true" />行事曆管理</button>
           <button className={activeSection === 'grades' ? 'is-active' : ''} type="button" onClick={() => changeSection('grades')}><BarChart3 aria-hidden="true" />成績管理</button>
           <button className={activeSection === 'learning' ? 'is-active' : ''} type="button" onClick={() => changeSection('learning')}><BookOpenText aria-hidden="true" />學習資源</button>
+          <button className={activeSection === 'admission' ? 'is-active' : ''} type="button" onClick={() => changeSection('admission')}><ClipboardCheck aria-hidden="true" />超額比序</button>
           <button className={activeSection === 'assignments' ? 'is-active' : ''} type="button" onClick={() => changeSection('assignments')}><ClipboardList aria-hidden="true" />作業管理</button>
         </nav>
         <div className="admin-sidebar-foot">
@@ -243,7 +246,7 @@ export default function AdminDashboard({ user, onExit, learningSystemUrl }) {
           <div>
             <p className="eyebrow">ADMIN DASHBOARD</p>
             <h1>{user.displayName}老師，您好</h1>
-            <p>{activeSection === 'dashboard' ? '先確認班級設定，再處理任課老師申請。' : activeSection === 'students' ? '建立學生帳號資料並分別設定數學、英語分組。' : activeSection === 'teachers' ? '查看已核准教師並調整可管理的任教科目。' : activeSection === 'announcements' ? '發布全校或班級公告，並查看學生已讀狀況。' : activeSection === 'honors' ? '建立向全班公開的榮譽紀錄，不顯示個人私密資料。' : activeSection === 'calendar' ? '建立與維護班級月份行事曆。' : activeSection === 'grades' ? '匯入、預覽、查詢並發布全班歷次成績。' : activeSection === 'learning' ? '發布通用或各科學習方法與影片。' : '發布共同與分組作業，系統會保存學生對象快照。'}</p>
+            <p>{activeSection === 'dashboard' ? '先確認班級設定，再處理任課老師申請。' : activeSection === 'students' ? '建立學生帳號資料並分別設定數學、英語分組。' : activeSection === 'teachers' ? '查看已核准教師並調整可管理的任教科目。' : activeSection === 'announcements' ? '發布全校或班級公告，並查看學生已讀狀況。' : activeSection === 'honors' ? '建立向全班公開的榮譽紀錄，不顯示個人私密資料。' : activeSection === 'calendar' ? '建立與維護班級月份行事曆。' : activeSection === 'grades' ? '匯入、預覽、查詢並發布全班歷次成績。' : activeSection === 'learning' ? '發布通用或各科學習方法與影片。' : activeSection === 'admission' ? '查看學生自我檢核積分並審閱競賽項目。' : '發布共同與分組作業，系統會保存學生對象快照。'}</p>
           </div>
           <div className="admin-topbar-actions">
             <button
@@ -409,6 +412,9 @@ export default function AdminDashboard({ user, onExit, learningSystemUrl }) {
         )}
         {!loading && dashboard && activeSection === 'learning' && (
           <LearningResourceManagement dashboard={dashboard} onNotice={handleSectionNotice} />
+        )}
+        {!loading && dashboard && activeSection === 'admission' && (
+          <AdmissionSelfCheckManagement classId={dashboard.classInfo.id} onNotice={handleSectionNotice} />
         )}
         {!loading && dashboard && activeSection === 'assignments' && (
           <AssignmentManagement dashboard={dashboard} allowQuizReminders allowPreviousDayBoard filterByOutstandingDate showSubmissionOverview />

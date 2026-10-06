@@ -9,6 +9,757 @@
   unicode-range: U+3000-303F, U+3100-312F, U+31A0-31BF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF;
 }
 
+/* 超額比序自我檢核 */
+.admission-self-check,
+.admission-admin-workspace {
+  display: grid;
+  gap: 20px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.admission-hero,
+.admission-admin-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px 30px;
+  background: linear-gradient(135deg, #fff8df 0%, #fff 55%, #e9f7f4 100%);
+  border: 2px solid var(--ink);
+  border-radius: 24px;
+  box-shadow: 7px 8px 0 #dccfa7;
+}
+
+.admission-hero h1,
+.admission-admin-intro h2 {
+  margin: 3px 0 8px;
+  color: var(--ink);
+  font-size: clamp(25px, 3vw, 38px);
+}
+
+.admission-hero p,
+.admission-admin-intro p {
+  max-width: 720px;
+  margin: 0;
+  color: #645f57;
+  line-height: 1.7;
+}
+
+.admission-total {
+  display: grid;
+  min-width: 210px;
+  padding: 18px 22px;
+  color: white;
+  background: #315d62;
+  border: 2px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 4px 5px 0 var(--ink);
+}
+
+.admission-total span,
+.admission-total em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+.admission-total strong {
+  font-size: 38px;
+  line-height: 1.1;
+}
+
+.admission-total strong small {
+  font-size: 18px;
+}
+
+.admission-total em {
+  margin-top: 7px;
+  color: #d9f2ee;
+  font-size: 13px;
+}
+
+.admission-exam-goal,
+.admission-review-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px 19px;
+  background: #eef7ff;
+  border: 1.5px solid #48718a;
+  border-radius: 16px;
+}
+
+.admission-exam-goal svg,
+.admission-review-message svg {
+  width: 24px;
+  flex: 0 0 auto;
+}
+
+.admission-exam-goal p,
+.admission-review-message p {
+  margin: 4px 0 0;
+  line-height: 1.55;
+}
+
+.admission-review-message.is-needs-info {
+  color: #7c4400;
+  background: #fff4dc;
+  border-color: #d18421;
+}
+
+.admission-review-message.is-reviewed {
+  color: #235b45;
+  background: #eaf8ef;
+  border-color: #3f8a69;
+}
+
+.admission-score-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admission-score-card {
+  display: grid;
+  gap: 4px;
+  padding: 15px 17px;
+  background: white;
+  border: 1.5px solid #bbb3a1;
+  border-radius: 15px;
+}
+
+.admission-score-card span {
+  color: #6a645a;
+  font-weight: 800;
+}
+
+.admission-score-card strong {
+  color: #274f59;
+  font-size: 26px;
+}
+
+.admission-score-card strong small {
+  font-size: 14px;
+}
+
+.admission-score-card.is-accent {
+  background: #fff1bf;
+  border-color: #b88612;
+}
+
+.admission-form,
+.admission-section {
+  display: grid;
+  gap: 18px;
+}
+
+.admission-section {
+  padding: 23px;
+  background: #fff;
+  border: 1.5px solid #bab3a5;
+  border-radius: 21px;
+  box-shadow: 4px 5px 0 #e5dfd4;
+}
+
+.admission-section > header {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.admission-section > header > span {
+  display: grid;
+  width: 47px;
+  height: 47px;
+  place-items: center;
+  color: #2f625f;
+  background: #dff3ed;
+  border: 1.5px solid #4b7b72;
+  border-radius: 14px;
+}
+
+.admission-section > header h2,
+.admission-section > header p {
+  margin: 0;
+}
+
+.admission-section > header p {
+  margin-top: 3px;
+  color: #716b62;
+}
+
+.admission-section > header > button,
+.admission-primary-save,
+.admission-editor-actions > button:first-child,
+.admission-admin-intro > button,
+.admission-admin-review-box button,
+.admission-admin-competition button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 14px;
+  color: white;
+  background: #315d62;
+  border: 1.5px solid var(--ink);
+  border-radius: 11px;
+  box-shadow: 2px 3px 0 var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admission-section > header > button {
+  margin-left: auto;
+}
+
+.admission-form-grid,
+.admission-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.admission-form-grid.is-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admission-field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.admission-field > span,
+.admission-admin-review-box label > span,
+.admission-admin-competition label > span {
+  color: #3e4147;
+  font-weight: 900;
+}
+
+.admission-field input,
+.admission-field select,
+.admission-admin-filters input,
+.admission-admin-filters select,
+.admission-admin-review-box textarea,
+.admission-admin-competition input {
+  width: 100%;
+  min-height: 45px;
+  padding: 9px 11px;
+  color: var(--ink);
+  background: #fffcf5;
+  border: 1.5px solid #918a7c;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.admission-field small {
+  color: #777065;
+  line-height: 1.45;
+}
+
+.admission-field-wide {
+  grid-column: 1 / -1;
+}
+
+.admission-balanced {
+  padding: 15px;
+  background: #f8fbfa;
+  border: 1.5px dashed #76928b;
+  border-radius: 14px;
+}
+
+.admission-balanced legend {
+  padding: 0 7px;
+  font-weight: 900;
+}
+
+.admission-balanced > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin: 5px 0 9px;
+}
+
+.admission-balanced label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px;
+  background: white;
+  border: 1.5px solid #aaa59b;
+  border-radius: 10px;
+  font-weight: 800;
+}
+
+.admission-balanced label.is-checked {
+  color: #204d45;
+  background: #dff3ed;
+  border-color: #3e7a6c;
+}
+
+.admission-primary-save {
+  justify-self: end;
+  padding-inline: 23px;
+  background: #896a13;
+}
+
+.admission-competition-editor {
+  display: grid;
+  gap: 15px;
+  padding: 18px;
+  background: #f8f4ff;
+  border: 1.5px solid #7f6ca5;
+  border-radius: 15px;
+}
+
+.admission-editor-actions,
+.admission-competition-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.admission-inline-error,
+.admission-competition-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  color: #8a4a00;
+}
+
+.admission-inline-error svg,
+.admission-competition-warning svg {
+  width: 20px;
+  flex: 0 0 auto;
+}
+
+.admission-empty,
+.admission-loading {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 30px;
+  color: #6d685f;
+  text-align: center;
+  background: #faf8f3;
+  border: 1.5px dashed #aaa395;
+  border-radius: 15px;
+}
+
+.admission-empty p {
+  margin: 0;
+}
+
+.admission-competition-list {
+  display: grid;
+  gap: 11px;
+}
+
+.admission-competition-list > article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: #fffdfa;
+  border: 1.5px solid #aaa399;
+  border-radius: 14px;
+}
+
+.admission-competition-list > article.is-pending {
+  background: #fff8e8;
+  border-color: #c58734;
+}
+
+.admission-competition-list > article.is-rejected {
+  opacity: .74;
+  background: #f4f1ef;
+}
+
+.admission-competition-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admission-competition-main > span,
+.admission-status {
+  display: inline-flex;
+  width: max-content;
+  padding: 4px 8px;
+  color: #3b2f65;
+  background: #eee8ff;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.admission-competition-main p,
+.admission-competition-main small {
+  display: block;
+  margin: 3px 0 0;
+  color: #716b62;
+}
+
+.admission-competition-score {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  color: #285e58;
+}
+
+.admission-competition-score strong {
+  font-size: 28px;
+}
+
+.admission-competition-actions button {
+  min-height: 37px;
+  padding: 7px 11px;
+  color: var(--ink);
+  background: white;
+  border: 1.5px solid #6f6a61;
+  border-radius: 9px;
+  font-weight: 900;
+}
+
+.admission-competition-actions button.is-danger,
+.admission-admin-competition button.is-danger {
+  color: #8a2f2f;
+  background: #fff0ef;
+}
+
+.admission-source-note {
+  padding: 15px 18px;
+  background: #f3f1eb;
+  border: 1.5px solid #a39c8d;
+  border-radius: 15px;
+}
+
+.admission-source-note summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admission-source-note div {
+  padding: 8px 5px 0;
+  line-height: 1.7;
+}
+
+.admission-admin-intro > button {
+  min-width: max-content;
+}
+
+.admission-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admission-admin-summary article {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  background: white;
+  border: 1.5px solid #aca69a;
+  border-radius: 15px;
+}
+
+.admission-admin-summary article.is-warning {
+  background: #fff5da;
+  border-color: #cc8f2e;
+}
+
+.admission-admin-summary article svg {
+  color: #47746f;
+}
+
+.admission-admin-summary article span {
+  font-weight: 800;
+}
+
+.admission-admin-summary article strong {
+  font-size: 25px;
+}
+
+.admission-admin-list-panel,
+.admission-admin-detail {
+  display: grid;
+  gap: 16px;
+  padding: 21px;
+  background: white;
+  border: 1.5px solid #aaa399;
+  border-radius: 18px;
+  box-shadow: 4px 5px 0 #ddd7cb;
+}
+
+.admission-admin-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, auto);
+  gap: 12px;
+}
+
+.admission-admin-filters label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admission-admin-filters label svg {
+  width: 21px;
+}
+
+.admission-admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admission-admin-table-wrap table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.admission-admin-table-wrap th,
+.admission-admin-table-wrap td {
+  padding: 11px;
+  border-bottom: 1px solid #ded9cf;
+  text-align: left;
+}
+
+.admission-admin-table-wrap td small {
+  display: block;
+  color: #777168;
+}
+
+.admission-admin-table-wrap tr.is-selected td {
+  background: #f0f7f5;
+}
+
+.admission-admin-table-wrap button {
+  padding: 7px 12px;
+  color: #274f59;
+  background: white;
+  border: 1.5px solid #56767d;
+  border-radius: 9px;
+  font-weight: 900;
+}
+
+.admission-status.is-reviewed,
+.admission-status.is-approved {
+  color: #245942;
+  background: #dff4e7;
+}
+
+.admission-status.is-needs_info,
+.admission-status.is-pending {
+  color: #7d4a08;
+  background: #fff0cf;
+}
+
+.admission-admin-empty {
+  color: #766f64;
+  text-align: center;
+}
+
+.admission-admin-detail > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.admission-admin-detail > header span,
+.admission-admin-detail > header p {
+  color: #777168;
+}
+
+.admission-admin-detail > header h2,
+.admission-admin-detail > header p {
+  margin: 2px 0;
+}
+
+.admission-admin-detail > header > strong {
+  color: #285d57;
+  font-size: 38px;
+}
+
+.admission-admin-detail > header > strong small {
+  font-size: 16px;
+}
+
+.admission-admin-breakdown {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.admission-admin-breakdown span {
+  display: grid;
+  gap: 3px;
+  padding: 11px;
+  background: #f8f6f0;
+  border-radius: 10px;
+}
+
+.admission-admin-breakdown span.is-total {
+  color: #694e00;
+  background: #fff0bd;
+}
+
+.admission-admin-review-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 13px;
+  padding: 16px;
+  background: #eef7f4;
+  border-radius: 13px;
+}
+
+.admission-admin-review-box label,
+.admission-admin-competition label {
+  display: grid;
+  gap: 6px;
+}
+
+.admission-admin-review-box textarea {
+  resize: vertical;
+}
+
+.admission-admin-review-box > div,
+.admission-admin-competition > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+.admission-admin-review-box button.is-warning {
+  color: #6e4100;
+  background: #ffd982;
+}
+
+.admission-admin-competitions {
+  display: grid;
+  gap: 11px;
+}
+
+.admission-admin-competition {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 13px;
+  padding: 14px;
+  background: #faf9f6;
+  border: 1.5px solid #bbb4a8;
+  border-radius: 12px;
+}
+
+.admission-admin-competition > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.admission-admin-competition p,
+.admission-admin-competition small {
+  margin: 0;
+  color: #716b62;
+}
+
+@media (max-width: 1080px) {
+  .admission-score-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admission-form-grid.is-four,
+  .admission-admin-summary,
+  .admission-admin-breakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admission-admin-competition {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admission-admin-competition > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .admission-hero,
+  .admission-admin-intro {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 19px;
+    box-shadow: 4px 5px 0 #dccfa7;
+  }
+
+  .admission-total {
+    min-width: 0;
+  }
+
+  .admission-score-grid,
+  .admission-form-grid,
+  .admission-form-grid.is-four,
+  .admission-editor-grid,
+  .admission-admin-summary,
+  .admission-admin-filters,
+  .admission-admin-breakdown,
+  .admission-admin-review-box,
+  .admission-admin-competition {
+    grid-template-columns: 1fr;
+  }
+
+  .admission-section {
+    padding: 16px;
+  }
+
+  .admission-section > header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .admission-section > header > button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .admission-balanced > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admission-primary-save {
+    width: 100%;
+  }
+
+  .admission-competition-list > article {
+    grid-template-columns: 1fr auto;
+  }
+
+  .admission-competition-actions {
+    grid-column: 1 / -1;
+  }
+
+  .admission-competition-main {
+    flex-direction: column;
+  }
+
+  .admission-admin-review-box > div,
+  .admission-admin-competition > div:last-child {
+    flex-direction: column;
+  }
+
+  .admission-admin-competition > div:last-child {
+    grid-column: auto;
+  }
+}
+
 @font-face {
   font-family: 'Iansui';
   font-style: normal;

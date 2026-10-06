@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  ClipboardCheck,
   ClipboardPenLine,
   ClipboardList,
   ExternalLink,
@@ -45,6 +46,7 @@ import StudentHelperWorkspace from './StudentHelperWorkspace.jsx'
 import CalendarViewer from './CalendarViewer.jsx'
 import StudentGrades from './StudentGrades.jsx'
 import LearningResources from './LearningResources.jsx'
+import AdmissionSelfCheck from './AdmissionSelfCheck.jsx'
 
 const reasonLabels = {
   incomplete: '未完成',
@@ -352,7 +354,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
     <div className="student-home-shell">
       <header className="student-home-header">
         <div className="student-home-brand"><span><BookOpen /></span><div><strong>八年六班</strong><small>線上聯絡簿</small></div></div>
-        {activeView !== 'helper' && <nav className="student-view-tabs" aria-label="學生功能切換"><button className={activeView === 'home' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('home'); setNotice(null) }}><BookOpen />聯絡簿</button><button className={activeView === 'announcements' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('announcements'); setAnnouncementSection(null); setNotice(null) }}><Megaphone />公告欄</button><button className={activeView === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('calendar'); setNotice(null) }}><CalendarRange />班級行事曆</button><button className={activeView === 'grades' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('grades'); setNotice(null) }}><BarChart3 />個人成績</button><button className={activeView === 'learning' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('learning'); setNotice(null) }}><BookOpenText />學習資源</button></nav>}
+        {activeView !== 'helper' && <nav className="student-view-tabs" aria-label="學生功能切換"><button className={activeView === 'home' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('home'); setNotice(null) }}><BookOpen />聯絡簿</button><button className={activeView === 'announcements' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('announcements'); setAnnouncementSection(null); setNotice(null) }}><Megaphone />公告欄</button><button className={activeView === 'calendar' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('calendar'); setNotice(null) }}><CalendarRange />班級行事曆</button><button className={activeView === 'grades' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('grades'); setNotice(null) }}><BarChart3 />個人成績</button><button className={activeView === 'learning' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('learning'); setNotice(null) }}><BookOpenText />學習資源</button><button className={activeView === 'admission' ? 'is-active' : ''} type="button" onClick={() => { setActiveView('admission'); setNotice(null) }}><ClipboardCheck />超額比序</button></nav>}
         <div className="student-home-actions">
           {hasHelperRole && activeView === 'home' && <button type="button" className="student-helper-launch" onClick={() => setActiveView('helper')}><ClipboardPenLine />幹部工作區</button>}
           <button type="button" className="student-refresh-button" aria-label="重新整理" onClick={() => load({ quiet: true })}><RefreshCw className={refreshing ? 'is-spinning' : ''} /></button>
@@ -366,6 +368,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
         {activeView === 'calendar' && <CalendarViewer classId={dashboard.classInfo.id} audience="student" />}
         {activeView === 'grades' && <StudentGrades studentId={dashboard.student.id} classId={dashboard.classInfo.id} />}
         {activeView === 'learning' && <LearningResources classId={dashboard.classInfo.id} />}
+        {activeView === 'admission' && <AdmissionSelfCheck studentId={dashboard.student.id} />}
         {activeView === 'announcements' && <div className="student-announcement-view">
           <section className="student-home-panel student-announcement-choice" aria-label="公告欄分類">
             <h1>公告欄</h1>
