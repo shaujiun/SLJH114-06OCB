@@ -184,8 +184,13 @@ export default function AdmissionSelfCheckManagement({ classId, onNotice }) {
           <span>體適能<strong>{scoreText(selected.scores.fitness)}／6</strong></span>
           <span className="is-total">多元表現採計<strong>{scoreText(selected.scores.diversePerformance)}／25</strong></span>
         </div>
+        <div className="admission-admin-input-summary">
+          <article><h3>出缺席與記過</h3><p>已輸入曠課資料 {selected.scores.semesterMetrics.attendanceSemesterCount} 學期，其中無曠課 {selected.scores.semesterMetrics.attendance} 學期。</p><p>未銷過紀錄：警告 {selected.scores.semesterMetrics.outstandingWarnings} 次、小過 {selected.scores.semesterMetrics.outstandingMinorDemerits} 次、大過 {selected.scores.semesterMetrics.outstandingMajorDemerits} 次。</p></article>
+          <article><h3>均衡學習</h3><p>{selected.scores.balancedMetrics.domainResults.map((item) => `${item.label} ${item.average === null ? '未輸入' : `平均 ${item.average} 分`}`).join('；')}。</p></article>
+          <article><h3>體適能</h3><p>評分表性別：{selected.check.fitnessGender === 'male' ? '男生' : selected.check.fitnessGender === 'female' ? '女生' : '未選擇'}；達門檻 {selected.scores.fitnessMetrics.qualifiedItemCount} 項。</p></article>
+        </div>
         <div className="admission-admin-review-box"><label><span>給學生的檢核備註</span><textarea maxLength="1000" rows="3" value={adminNote} onChange={(event) => setAdminNote(event.target.value)} /></label><div><button type="button" disabled={reviewing} onClick={() => reviewCheck('reviewed')}><CheckCircle2 />標記已檢核</button><button type="button" className="is-warning" disabled={reviewing} onClick={() => reviewCheck('needs_info')}><CircleAlert />請學生補資料</button></div></div>
-        <section className="admission-admin-competitions"><h3>競賽紀錄</h3>{!selected.competitions.length && <p>這位學生尚未新增競賽。</p>}{selected.competitions.map((entry) => <CompetitionReview entry={entry} onSaved={competitionReviewed} onError={(message) => onNotice('error', message)} key={`${entry.id}-${entry.reviewStatus}-${entry.adminNote}`} />)}</section>
+        <section className="admission-admin-competitions"><h3>競賽紀錄</h3><p>實際採計由雲林縣教育處認定，本系統只能提供參考。</p>{!selected.competitions.length && <p>這位學生尚未新增競賽。</p>}{selected.competitions.map((entry) => <CompetitionReview entry={entry} onSaved={competitionReviewed} onError={(message) => onNotice('error', message)} key={`${entry.id}-${entry.reviewStatus}-${entry.adminNote}`} />)}</section>
       </section>}
     </div>
   )

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calculateBalancedMetrics,
+  calculateFitnessMetrics,
   calculateAdmissionScores,
+  calculateSemesterMetrics,
   competitionEntryScore,
+  fitnessRecordResult,
+  parseFitnessTime,
   preferenceScore,
   scoredCompetitionEntries,
 } from './admissionScoring.js'
@@ -53,5 +58,79 @@ describe('雲林區超額比序計分', () => {
     expect(scores.fitness).toBe(6)
     expect(scores.diversePerformance).toBe(25)
     expect(scores.withoutExam).toBe(60)
+  })
+
+  it('依各學期曠課與未銷過紀錄計算出缺席及無記過積分', () => {
+    const metrics = calculateSemesterMetrics({
+      semesterRecords: [
+        { truancyPeriods: 0, warningCount: 1, minorDemeritCount: 0, majorDemeritCount: 0, disciplineCleared: false },
+        { truancyPeriods: 2, warningCount: 2, minorDemeritCount: 1, majorDemeritCount: 0, disciplineCleared: true },
+        { truancyPeriods: 0, warningCount: 0, minorDemeritCount: 0, majorDemeritCount: 0, disciplineCleared: false },
+      ],
+    })
+    expect(metrics.attendance).toBe(2)
+    expect(metrics.outstandingWarnings).toBe(1)
+    expect(metrics.outstandingMinorDemerits).toBe(0)
+    expect(metrics.discipline).toBe(1)
+  })
+
+  it('已銷過的記過紀錄不列入目前累積紀錄', () => {
+    const metrics = calculateSemesterMetrics({
+      semesterRecords: [
+        { truancyPeriods: 0, warningCount: 3, minorDemeritCount: 1, majorDemeritCount: 0, disciplineCleared: true },
+      ],
+    })
+    expect(metrics.outstandingWarnings).toBe(0)
+    expect(metrics.outstandingMinorDemerits).toBe(0)
+    expect(metrics.discipline).toBe(5)
+  })
+
+  it('均衡學習依目前已輸入學期平均判斷，每領域 3 分且上限 9 分', () => {
+    const metrics = calculateBalancedMetrics({
+      balancedScores: [
+        { health: 60, arts: 59, integrated: 80, technology: 100 },
+        { health: 70, arts: 61, integrated: 40, technology: 100 },
+        { health: '', arts: 60, integrated: '', technology: '' },
+      ],
+    })
+    expect(metrics.domainResults.find((item) => item.key === 'health').average).toBe(65)
+    expect(metrics.domainResults.find((item) => item.key === 'arts').average).toBe(60)
+    expect(metrics.domainResults.find((item) => item.key === 'integrated').average).toBe(60)
+    expect(metrics.passedDomains).toEqual(['health', 'arts', 'integrated', 'technology'])
+    expect(metrics.score).toBe(9)
+  })
+
+  it('體適能依性別、年齡及數值方向判斷，跑步時間須小於等於門檻', () => {
+    expect(parseFitnessTime('11:16')).toBe(676)
+    expect(parseFitnessTime('5:23')).toBe(323)
+    expect(fitnessRecordResult({
+      age: 13,
+      curlUps: 17,
+      sitAndReach: 17,
+      standingLongJump: 148,
+      cardioType: 'run',
+      cardioResult: '11:16',
+    }, 'male').passedItems).toEqual(['muscular', 'power', 'cardio'])
+    expect(fitnessRecordResult({
+      age: 14,
+      curlUps: 11,
+      sitAndReach: 23,
+      standingLongJump: 121,
+      cardioType: 'run',
+      cardioResult: '5:24',
+    }, 'female').passedItems).toEqual(['flexibility'])
+  })
+
+  it('體適能跨學期同一項只算一次，任兩項通過即達 6 分上限', () => {
+    const metrics = calculateFitnessMetrics({
+      fitnessGender: 'female',
+      fitnessRecords: [
+        { age: 13, curlUps: 13, cardioType: 'run', cardioResult: '' },
+        { age: 14, curlUps: 12, sitAndReach: 23, cardioType: 'run', cardioResult: '' },
+      ],
+    })
+    expect(metrics.qualifiedItems.sort()).toEqual(['flexibility', 'muscular'])
+    expect(metrics.qualifiedItemCount).toBe(2)
+    expect(metrics.score).toBe(6)
   })
 })

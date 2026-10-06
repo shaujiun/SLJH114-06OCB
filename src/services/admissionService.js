@@ -1,9 +1,64 @@
 import { requireSupabase } from '../lib/supabase.js'
-import { emptyAdmissionCheck } from '../lib/admissionScoring.js'
+import {
+  emptyAdmissionCheck,
+  emptyBalancedScores,
+  emptyFitnessRecords,
+  emptySemesterRecords,
+} from '../lib/admissionScoring.js'
 
 function requireData(data, error, message) {
   if (error) throw new Error(message)
   return data
+}
+
+function mergeSemesterRows(defaultRows, storedRows) {
+  const storedBySemester = new Map(
+    (Array.isArray(storedRows) ? storedRows : [])
+      .filter((row) => row && typeof row === 'object' && row.semester)
+      .map((row) => [row.semester, row]),
+  )
+  return defaultRows.map((row) => ({ ...row, ...(storedBySemester.get(row.semester) || {}) }))
+}
+
+function optionalNumber(value) {
+  if (value === '' || value === null || value === undefined) return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function serializeSemesterRecords(records) {
+  return mergeSemesterRows(emptySemesterRecords(), records).map((record) => ({
+    semester: record.semester,
+    truancyPeriods: optionalNumber(record.truancyPeriods),
+    warningCount: optionalNumber(record.warningCount),
+    minorDemeritCount: optionalNumber(record.minorDemeritCount),
+    majorDemeritCount: optionalNumber(record.majorDemeritCount),
+    disciplineCleared: record.disciplineCleared === true,
+  }))
+}
+
+function serializeBalancedScores(records) {
+  return mergeSemesterRows(emptyBalancedScores(), records).map((record) => ({
+    semester: record.semester,
+    health: optionalNumber(record.health),
+    arts: optionalNumber(record.arts),
+    integrated: optionalNumber(record.integrated),
+    technology: optionalNumber(record.technology),
+  }))
+}
+
+function serializeFitnessRecords(records) {
+  return mergeSemesterRows(emptyFitnessRecords(), records).map((record) => ({
+    semester: record.semester,
+    age: optionalNumber(record.age),
+    curlUps: optionalNumber(record.curlUps),
+    sitAndReach: optionalNumber(record.sitAndReach),
+    standingLongJump: optionalNumber(record.standingLongJump),
+    cardioType: record.cardioType === 'shuttle' ? 'shuttle' : 'run',
+    cardioResult: record.cardioResult === '' || record.cardioResult === null || record.cardioResult === undefined
+      ? null
+      : String(record.cardioResult).trim(),
+  }))
 }
 
 export function mapAdmissionCheckRow(row) {
@@ -18,12 +73,16 @@ export function mapAdmissionCheckRow(row) {
     nearbyEnrollment: row.nearby_enrollment,
     noTruancySemesters: row.no_truancy_semesters ?? 0,
     disciplineStatus: row.discipline_status || '',
+    semesterRecords: mergeSemesterRows(emptySemesterRecords(), row.semester_records),
     balancedDomains: Array.isArray(row.balanced_domains) ? row.balanced_domains : [],
+    balancedScores: mergeSemesterRows(emptyBalancedScores(), row.balanced_scores),
     remoteSchoolBand: row.remote_school_band || '',
     majorMerits: row.major_merits ?? 0,
     minorMerits: row.minor_merits ?? 0,
     commendations: row.commendations ?? 0,
     fitnessQualifiedItems: row.fitness_qualified_items ?? 0,
+    fitnessGender: row.fitness_gender || '',
+    fitnessRecords: mergeSemesterRows(emptyFitnessRecords(), row.fitness_records),
     reviewStatus: row.review_status || 'self_reported',
     adminNote: row.admin_note || '',
     reviewedAt: row.reviewed_at,
@@ -116,12 +175,16 @@ export async function saveMyAdmissionSelfCheck(check) {
       nearbyEnrollment: check.nearbyEnrollment,
       noTruancySemesters: Number(check.noTruancySemesters || 0),
       disciplineStatus: check.disciplineStatus || null,
+      semesterRecords: serializeSemesterRecords(check.semesterRecords),
       balancedDomains: check.balancedDomains || [],
+      balancedScores: serializeBalancedScores(check.balancedScores),
       remoteSchoolBand: check.remoteSchoolBand || null,
       majorMerits: Number(check.majorMerits || 0),
       minorMerits: Number(check.minorMerits || 0),
       commendations: Number(check.commendations || 0),
       fitnessQualifiedItems: Number(check.fitnessQualifiedItems || 0),
+      fitnessGender: check.fitnessGender || null,
+      fitnessRecords: serializeFitnessRecords(check.fitnessRecords),
     },
   })
   if (error) throw new Error('自我檢核表儲存失敗，請檢查欄位後再試。')

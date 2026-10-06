@@ -224,6 +224,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.admission-form-grid.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .admission-field {
   display: grid;
   align-content: start;
@@ -297,6 +301,199 @@
   color: #204d45;
   background: #dff3ed;
   border-color: #3e7a6c;
+}
+
+.admission-data-fieldset {
+  min-width: 0;
+  padding: 16px;
+  background: #f8fbfa;
+  border: 1.5px dashed #76928b;
+  border-radius: 14px;
+}
+
+.admission-data-fieldset legend {
+  padding: 0 8px;
+  color: #274d4d;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.admission-data-fieldset > p {
+  margin: 0 0 12px;
+  color: #625e55;
+  line-height: 1.55;
+}
+
+.admission-table-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.admission-semester-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  border: 1px solid #bbb5aa;
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.admission-semester-table th,
+.admission-semester-table td {
+  padding: 9px;
+  text-align: center;
+  border-right: 1px solid #d8d2c8;
+  border-bottom: 1px solid #d8d2c8;
+}
+
+.admission-semester-table tr:last-child > * {
+  border-bottom: 0;
+}
+
+.admission-semester-table tr > *:last-child {
+  border-right: 0;
+}
+
+.admission-semester-table thead th,
+.admission-semester-table tbody th {
+  background: #f2eee5;
+  font-weight: 900;
+}
+
+.admission-semester-table input {
+  width: 86px;
+  min-height: 40px;
+  padding: 6px 8px;
+  text-align: center;
+  border: 1.5px solid #9b9589;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.admission-semester-table tr.is-cleared td:not(:last-child) {
+  opacity: 0.48;
+}
+
+.admission-cleared-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.admission-cleared-check input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.admission-calculated-note {
+  margin-top: 11px;
+  padding: 10px 12px;
+  color: #315d62;
+  background: #e7f4f1;
+  border-radius: 10px;
+  line-height: 1.5;
+}
+
+.admission-result-pill {
+  display: inline-block;
+  padding: 5px 8px;
+  color: #70695f;
+  background: #eeeae2;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admission-result-pill.is-passed {
+  color: #1e5f47;
+  background: #dff3e9;
+}
+
+.admission-fitness-heading {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(280px, 1.3fr);
+  gap: 15px;
+  align-items: end;
+  margin-bottom: 15px;
+}
+
+.admission-fitness-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.admission-fitness-card {
+  min-width: 0;
+  padding: 14px;
+  background: white;
+  border: 1.5px solid #b8b1a5;
+  border-radius: 12px;
+}
+
+.admission-fitness-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.admission-fitness-card > header span {
+  padding: 3px 8px;
+  color: #1e5f47;
+  background: #dff3e9;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.admission-fitness-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.admission-fitness-fields label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.admission-fitness-fields label > span {
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.admission-fitness-fields input,
+.admission-fitness-fields select {
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 8px;
+  border: 1.5px solid #9b9589;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.admission-fitness-fields small {
+  color: #777065;
+}
+
+.admission-fitness-standard {
+  margin: 11px 0 0 !important;
+  color: #6a6256 !important;
+  font-size: 0.88rem;
+}
+
+.admission-competitions > header small {
+  display: block;
+  margin-top: 4px;
+  color: #9a4c19;
+  font-weight: 900;
 }
 
 .admission-primary-save {
@@ -613,6 +810,30 @@
   background: #fff0bd;
 }
 
+.admission-admin-input-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admission-admin-input-summary article {
+  padding: 13px;
+  background: #f8fbfa;
+  border: 1px solid #c5d8d2;
+  border-radius: 11px;
+}
+
+.admission-admin-input-summary h3,
+.admission-admin-input-summary p {
+  margin: 0;
+}
+
+.admission-admin-input-summary p {
+  margin-top: 6px;
+  color: #666158;
+  line-height: 1.5;
+}
+
 .admission-admin-review-box {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -707,10 +928,12 @@
   .admission-score-grid,
   .admission-form-grid,
   .admission-form-grid.is-four,
+  .admission-form-grid.is-three,
   .admission-editor-grid,
   .admission-admin-summary,
   .admission-admin-filters,
   .admission-admin-breakdown,
+  .admission-admin-input-summary,
   .admission-admin-review-box,
   .admission-admin-competition {
     grid-template-columns: 1fr;
@@ -732,6 +955,12 @@
 
   .admission-balanced > div {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admission-fitness-heading,
+  .admission-fitness-grid,
+  .admission-fitness-fields {
+    grid-template-columns: 1fr;
   }
 
   .admission-primary-save {
