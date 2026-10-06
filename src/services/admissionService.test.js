@@ -16,14 +16,19 @@ describe('超額比序資料轉換', () => {
       rule_version: 'yunlin-113-05-16', preference_order: 5,
       economic_weakness: false, nearby_enrollment: true,
       no_truancy_semesters: 3, discipline_status: 'none',
+      semester_records: [{ semester: 'grade7_1', truancyPeriods: 0, warningCount: 0 }],
       balanced_domains: ['arts'], remote_school_band: 'other',
+      balanced_scores: [{ semester: 'grade7_1', arts: 88 }],
       major_merits: 1, minor_merits: 2, commendations: 3,
-      fitness_qualified_items: 2, review_status: 'reviewed',
+      fitness_qualified_items: 2, fitness_gender: 'female',
+      fitness_records: [{ semester: 'grade7_1', age: 13, curlUps: 13 }],
+      review_status: 'reviewed',
       admin_note: '已核對', reviewed_at: '2026-10-06', updated_at: '2026-10-06',
     })).toMatchObject({
       id: 'check-1', studentId: 'student-1', preferenceOrder: 5,
       economicWeakness: false, nearbyEnrollment: true,
-      balancedDomains: ['arts'], reviewStatus: 'reviewed', adminNote: '已核對',
+      balancedDomains: ['arts'], fitnessGender: 'female',
+      reviewStatus: 'reviewed', adminNote: '已核對',
     })
   })
 
@@ -50,15 +55,24 @@ describe('學生超額比序儲存', () => {
     await saveMyAdmissionSelfCheck({
       preferenceOrder: '10', economicWeakness: true, nearbyEnrollment: false,
       noTruancySemesters: '4', disciplineStatus: 'none', balancedDomains: ['health', 'arts'],
+      semesterRecords: [{ semester: 'grade7_1', truancyPeriods: '0', warningCount: '1', disciplineCleared: false }],
+      balancedScores: [{ semester: 'grade7_1', health: '80', arts: '', integrated: '59', technology: '70' }],
       remoteSchoolBand: 'other', majorMerits: '1', minorMerits: '2', commendations: '3',
-      fitnessQualifiedItems: '2', adminNote: '不可由學生改寫',
+      fitnessQualifiedItems: '2', fitnessGender: 'male',
+      fitnessRecords: [{ semester: 'grade7_1', age: '13', curlUps: '17', cardioType: 'run', cardioResult: '11:16' }],
+      adminNote: '不可由學生改寫',
     })
     expect(rpc).toHaveBeenCalledWith('save_my_admission_self_check', {
       p_payload: expect.objectContaining({
         preferenceOrder: 10, noTruancySemesters: 4, majorMerits: 1,
         balancedDomains: ['health', 'arts'],
+        fitnessGender: 'male',
       }),
     })
+    const payload = rpc.mock.calls[0][1].p_payload
+    expect(payload.semesterRecords[0]).toMatchObject({ truancyPeriods: 0, warningCount: 1 })
+    expect(payload.balancedScores[0]).toMatchObject({ health: 80, arts: null, integrated: 59 })
+    expect(payload.fitnessRecords[0]).toMatchObject({ age: 13, curlUps: 17, cardioResult: '11:16' })
     expect(rpc.mock.calls[0][1].p_payload).not.toHaveProperty('adminNote')
   })
 

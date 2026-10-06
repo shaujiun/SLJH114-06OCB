@@ -13,10 +13,14 @@ import {
   Trophy,
 } from 'lucide-react'
 import {
+  ADMISSION_SEMESTERS,
+  BALANCED_DOMAIN_OPTIONS,
   COMPETITION_AWARD_OPTIONS,
+  FITNESS_STANDARDS,
   TEAM_SCALE_OPTIONS,
   calculateAdmissionScores,
   competitionEntryScore,
+  fitnessRecordResult,
 } from '../lib/admissionScoring.js'
 import { COMPETITION_TIER_LABELS } from '../lib/admissionCompetitionCatalog.js'
 import {
@@ -25,13 +29,6 @@ import {
   saveMyAdmissionCompetition,
   saveMyAdmissionSelfCheck,
 } from '../services/admissionService.js'
-
-const balancedDomainOptions = [
-  ['health', '健康與體育'],
-  ['arts', '藝術'],
-  ['integrated', '綜合活動'],
-  ['technology', '科技'],
-]
 
 const reviewLabels = {
   listed: '表列項目，自我填報',
@@ -77,6 +74,85 @@ function CountSelect({ id, label, value, maximum, onChange, unit = '次', hint }
 
 function ScoreCard({ label, value, maximum, tone = '' }) {
   return <article className={`admission-score-card ${tone}`}><span>{label}</span><strong>{scoreText(value)}<small>／{maximum}</small></strong></article>
+}
+
+function SemesterRecordsEditor({ records, metrics, onChange }) {
+  return (
+    <fieldset className="admission-data-fieldset">
+      <legend>出缺席與記過紀錄</legend>
+      <p>逐學期輸入曠課及尚未銷過的獎懲次數；勾選「均已銷過」後，該學期的記過次數不列入計算。</p>
+      <div className="admission-table-scroll">
+        <table className="admission-semester-table">
+          <thead><tr><th>學期</th><th>曠課節數</th><th>警告次數</th><th>小過次數</th><th>大過次數</th><th>記過均已銷過</th></tr></thead>
+          <tbody>{records.map((record, index) => <tr className={record.disciplineCleared ? 'is-cleared' : ''} key={record.semester}>
+            <th>{ADMISSION_SEMESTERS.find((item) => item.key === record.semester)?.label}</th>
+            {['truancyPeriods', 'warningCount', 'minorDemeritCount', 'majorDemeritCount'].map((field) => <td key={field}><input aria-label={`${record.semester}-${field}`} type="number" inputMode="numeric" min="0" max="99" value={record[field] ?? ''} onChange={(event) => onChange(index, field, event.target.value)} /></td>)}
+            <td><label className="admission-cleared-check"><input type="checkbox" checked={record.disciplineCleared === true} onChange={(event) => onChange(index, 'disciplineCleared', event.target.checked)} /><span>均已銷過</span></label></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <div className="admission-calculated-note"><strong>目前自動計算：</strong>無曠課 {metrics.attendance} 學期；未銷過紀錄為警告 {metrics.outstandingWarnings} 次、小過 {metrics.outstandingMinorDemerits} 次、大過 {metrics.outstandingMajorDemerits} 次。</div>
+    </fieldset>
+  )
+}
+
+function BalancedScoresEditor({ records, metrics, onChange }) {
+  return (
+    <fieldset className="admission-data-fieldset admission-balanced-scores">
+      <legend>均衡學習各學期成績</legend>
+      <p>系統以目前已輸入的學期成績計算各領域平均；平均達 60 分者每領域 3 分，四領域擇優採計三領域，最高 9 分。</p>
+      <div className="admission-table-scroll">
+        <table className="admission-semester-table">
+          <thead><tr><th>領域</th>{ADMISSION_SEMESTERS.map((semester) => <th key={semester.key}>{semester.label.replace('年級', '').replace('學期', '')}</th>)}<th>目前平均</th><th>結果</th></tr></thead>
+          <tbody>{BALANCED_DOMAIN_OPTIONS.map((domain) => {
+            const result = metrics.domainResults.find((item) => item.key === domain.key)
+            return <tr key={domain.key}><th>{domain.label}</th>{records.map((record, index) => <td key={record.semester}><input aria-label={`${domain.label}-${record.semester}`} type="number" inputMode="decimal" min="0" max="100" step="0.1" value={record[domain.key] ?? ''} onChange={(event) => onChange(index, domain.key, event.target.value)} /></td>)}<td><strong>{result?.average === null ? '—' : result?.average}</strong></td><td><span className={`admission-result-pill ${result?.passed ? 'is-passed' : ''}`}>{result?.average === null ? '未輸入' : result.passed ? '及格＋3' : '未達 60'}</span></td></tr>
+          })}</tbody>
+        </table>
+      </div>
+    </fieldset>
+  )
+}
+
+const fitnessItemLabels = {
+  muscular: '肌力與肌耐力',
+  flexibility: '柔軟度',
+  power: '瞬發力',
+  cardio: '心肺耐力',
+}
+
+function formatSeconds(seconds) {
+  const minutes = Math.floor(seconds / 60)
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function FitnessScoresEditor({ gender, records, metrics, onGenderChange, onChange }) {
+  return (
+    <fieldset className="admission-data-fieldset admission-fitness-scores">
+      <legend>體適能各學期成績</legend>
+      <div className="admission-fitness-heading">
+        <label className="admission-field"><span>評分表性別</span><select value={gender} onChange={(event) => onGenderChange(event.target.value)}><option value="">請選擇</option><option value="male">男生</option><option value="female">女生</option></select><small>原評分表依性別及測驗當時年齡設定不同門檻。</small></label>
+        <div className="admission-calculated-note"><strong>已達門檻：</strong>{metrics.qualifiedItems.length ? metrics.qualifiedItems.map((item) => fitnessItemLabels[item]).join('、') : '尚無'}；任一項 3 分，最高 6 分。</div>
+      </div>
+      <div className="admission-fitness-grid">{records.map((record, index) => {
+        const result = fitnessRecordResult(record, gender)
+        const standard = FITNESS_STANDARDS[gender]?.[Number(record.age)]
+        const runLabel = gender === 'female' ? '800 公尺跑步' : gender === 'male' ? '1600 公尺跑步' : '跑步'
+        return <article className="admission-fitness-card" key={record.semester}>
+          <header><strong>{ADMISSION_SEMESTERS.find((item) => item.key === record.semester)?.label}</strong>{result.passedItems.length > 0 && <span>{result.passedItems.length} 項達標</span>}</header>
+          <div className="admission-fitness-fields">
+            <label><span>當時年齡</span><select value={record.age ?? ''} onChange={(event) => onChange(index, 'age', event.target.value)}><option value="">請選擇</option>{[13, 14, 15, 16].map((age) => <option value={age} key={age}>{age} 歲</option>)}</select></label>
+            <label><span>仰臥捲腹</span><input type="number" min="0" inputMode="numeric" value={record.curlUps ?? ''} onChange={(event) => onChange(index, 'curlUps', event.target.value)} /><small>次</small></label>
+            <label><span>坐姿體前彎</span><input type="number" min="0" step="0.1" inputMode="decimal" value={record.sitAndReach ?? ''} onChange={(event) => onChange(index, 'sitAndReach', event.target.value)} /><small>公分</small></label>
+            <label><span>立定跳遠</span><input type="number" min="0" step="0.1" inputMode="decimal" value={record.standingLongJump ?? ''} onChange={(event) => onChange(index, 'standingLongJump', event.target.value)} /><small>公分</small></label>
+            <label><span>心肺耐力方式</span><select value={record.cardioType || 'run'} onChange={(event) => onChange(index, 'cardioType', event.target.value)}><option value="run">{runLabel}</option><option value="shuttle">漸速耐力折返跑</option></select></label>
+            <label><span>{record.cardioType === 'shuttle' ? '折返跑成績' : '跑步時間'}</span><input type="text" inputMode={record.cardioType === 'shuttle' ? 'numeric' : 'text'} placeholder={record.cardioType === 'shuttle' ? '輸入趟數' : '例如 11:16'} value={record.cardioResult ?? ''} onChange={(event) => onChange(index, 'cardioResult', event.target.value)} /><small>{record.cardioType === 'shuttle' ? '趟' : '分：秒'}</small></label>
+          </div>
+          {standard ? <p className="admission-fitness-standard">本列門檻：捲腹 ≥ {standard.curlUps} 次、體前彎 ≥ {standard.sitAndReach} 公分、跳遠 ≥ {standard.standingLongJump} 公分、跑步 ≤ {formatSeconds(standard.runSeconds)} 或折返跑 ≥ {standard.shuttleRun} 趟。</p> : <p className="admission-fitness-standard">選擇性別與當時年齡後，系統才會判斷是否達標。</p>}
+        </article>
+      })}</div>
+    </fieldset>
+  )
 }
 
 function CompetitionEditor({ catalog, entry, onSaved, onCancel }) {
@@ -181,13 +257,14 @@ export default function AdmissionSelfCheck({ studentId }) {
     setNotice(null)
   }
 
-  function toggleBalancedDomain(domain) {
-    setCheck((current) => {
-      const selected = new Set(current.balancedDomains)
-      if (selected.has(domain)) selected.delete(domain)
-      else if (selected.size < 3) selected.add(domain)
-      return { ...current, balancedDomains: [...selected] }
-    })
+  function updateRecord(collection, index, field, value) {
+    setCheck((current) => ({
+      ...current,
+      [collection]: current[collection].map((record, recordIndex) => (
+        recordIndex === index ? { ...record, [field]: value } : record
+      )),
+    }))
+    setNotice(null)
   }
 
   async function saveCheck(event) {
@@ -253,28 +330,27 @@ export default function AdmissionSelfCheck({ studentId }) {
             <label className="admission-field"><span>預估志願序</span><select value={check.preferenceOrder} onChange={(event) => update('preferenceOrder', event.target.value)}><option value="">尚未選擇</option>{Array.from({ length: 50 }, (_, index) => <option value={index + 1} key={index + 1}>第 {index + 1} 志願</option>)}</select><small>第 1～10 志願 8 分，之後每 10 個志願遞減 1 分。</small></label>
             <BooleanSelect id="admission-economic" label="經濟弱勢" value={check.economicWeakness} onChange={(value) => update('economicWeakness', value)} yesLabel="具中低或低收入戶資格" hint="須以畢業當年度有效證明為準。" />
             <BooleanSelect id="admission-nearby" label="就近入學" value={check.nearbyEnrollment} onChange={(value) => update('nearbyEnrollment', value)} hint="雲林區及符合共同就學區資格者可得 5 分。" />
-            <CountSelect id="admission-attendance" label="無曠課學期數" value={check.noTruancySemesters} maximum={5} onChange={(value) => update('noTruancySemesters', value)} unit="學期" hint="採計國一上至國三上，每學期 1 分。" />
-            <label className="admission-field"><span>無記過紀錄</span><select value={check.disciplineStatus} onChange={(event) => update('disciplineStatus', event.target.value)}><option value="">尚未選擇</option><option value="none">無警告以上紀錄（含銷過後）－5 分</option><option value="warnings_up_to_2">警告累積 2 次以下－1 分</option><option value="minor_demerit_or_more">警告 3 次以上或小過以上－0 分</option></select></label>
             <label className="admission-field"><span>偏遠小校</span><select value={check.remoteSchoolBand} onChange={(event) => update('remoteSchoolBand', event.target.value)}><option value="">尚未選擇</option><option value="seven_or_less">核定偏遠學校且 7 班以下－2 分</option><option value="eight_to_twelve">核定偏遠學校且 8 至 12 班－1 分</option><option value="other">不符合－0 分</option></select><small>是否符合須依畢業學年度核定及班級數認定。</small></label>
           </div>
-          <fieldset className="admission-balanced"><legend>均衡學習：選擇成績及格的 3 個領域，每領域 3 分</legend><div>{balancedDomainOptions.map(([value, label]) => <label className={check.balancedDomains.includes(value) ? 'is-checked' : ''} key={value}><input type="checkbox" checked={check.balancedDomains.includes(value)} onChange={() => toggleBalancedDomain(value)} /><span>{label}</span></label>)}</div><small>制度為四領域選三領域，畫面最多可勾選 3 項。</small></fieldset>
+          <SemesterRecordsEditor records={check.semesterRecords} metrics={scores.semesterMetrics} onChange={(index, field, value) => updateRecord('semesterRecords', index, field, value)} />
+          <BalancedScoresEditor records={check.balancedScores} metrics={scores.balancedMetrics} onChange={(index, field, value) => updateRecord('balancedScores', index, field, value)} />
         </section>
 
         <section className="admission-section">
           <header><span><Award /></span><div><h2>獎勵紀錄與體適能</h2><p>獎勵、競賽、體適能三項合計最高採計 25 分。</p></div></header>
-          <div className="admission-form-grid is-four">
+          <div className="admission-form-grid is-three">
             <CountSelect id="admission-major-merit" label="大功" value={check.majorMerits} maximum={20} onChange={(value) => update('majorMerits', value)} unit="支" hint="每支 4.5 分" />
             <CountSelect id="admission-minor-merit" label="小功" value={check.minorMerits} maximum={30} onChange={(value) => update('minorMerits', value)} unit="支" hint="每支 1.5 分" />
             <CountSelect id="admission-commendation" label="嘉獎" value={check.commendations} maximum={40} onChange={(value) => update('commendations', value)} unit="支" hint="每支 0.5 分；獎勵最高 15 分" />
-            <CountSelect id="admission-fitness" label="體適能達門檻項目" value={check.fitnessQualifiedItems} maximum={4} onChange={(value) => update('fitnessQualifiedItems', value)} unit="項" hint="任一項 3 分，最高 6 分" />
           </div>
+          <FitnessScoresEditor gender={check.fitnessGender} records={check.fitnessRecords} metrics={scores.fitnessMetrics} onGenderChange={(value) => update('fitnessGender', value)} onChange={(index, field, value) => updateRecord('fitnessRecords', index, field, value)} />
         </section>
 
         <button className="admission-primary-save" type="submit" disabled={saving}><Save />{saving ? '儲存中…' : '儲存自我檢核資料'}</button>
       </form>
 
       <section className="admission-section admission-competitions">
-        <header><span><Trophy /></span><div><h2>競賽成績</h2><p>可新增三年內多項比賽；同學年度同一性質或同一項目只採最高一次，競賽最高 9 分。</p></div><button type="button" onClick={() => { setEditingEntry(null); setShowCompetitionEditor(true) }}><Plus />新增競賽</button></header>
+        <header><span><Trophy /></span><div><h2>競賽成績</h2><p>可新增三年內多項比賽；同學年度同一性質或同一項目只採最高一次，競賽最高 9 分。</p><small>實際採計由雲林縣教育處認定，本系統只能提供參考。</small></div><button type="button" onClick={() => { setEditingEntry(null); setShowCompetitionEditor(true) }}><Plus />新增競賽</button></header>
         {scores.pendingCompetitionCount > 0 && <p className="admission-competition-warning"><CircleAlert />有 {scores.pendingCompetitionCount} 筆其他競賽尚待管理者確認，目前未計分。</p>}
         {scores.duplicateCompetitionCount > 0 && <p className="admission-competition-warning"><CircleAlert />偵測到同學年度重複競賽，已自動只採分數最高的一筆。</p>}
         {(showCompetitionEditor || editingEntry) && <CompetitionEditor key={editingEntry?.id || 'new'} catalog={data.catalog} entry={editingEntry} onSaved={competitionSaved} onCancel={() => { setEditingEntry(null); setShowCompetitionEditor(false) }} />}
