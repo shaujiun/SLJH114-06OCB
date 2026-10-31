@@ -243,9 +243,8 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
       dashboard?.assignments,
       termId,
       contactDate,
-      today,
     ),
-    [contactDate, dashboard, termId, today],
+    [contactDate, dashboard, termId],
   )
   const assignmentGroups = useMemo(
     () => groupStudentAssignments(assignments),
@@ -469,7 +468,7 @@ export default function StudentDashboard({ onExit, learningSystemUrl }) {
         <div className="student-home-grid">
           <section className="student-home-panel student-assignments-panel">
             <div className="student-home-panel-heading student-contact-book-heading">
-              <div><span><ClipboardList /></span><div><h2>{contactDate === today ? '我的作業' : `${contactDateLabel(contactDate, today)} 作業紀錄`}</h2><p>{contactDate === today ? '今天維持待辦模式，已繳交作業不顯示' : '歷史日期顯示當天完整作業，不列為新的待辦'}</p></div></div>
+              <div><span><ClipboardList /></span><div><h2>{contactDate === today ? '我的作業' : `${contactDateLabel(contactDate, today)} 待辦紀錄`}</h2><p>{contactDate === today ? '顯示截至今天仍未完成的作業' : '顯示截至該日已發布、且目前仍未完成的作業'}</p></div></div>
               <div className="student-contact-date-control">
                 <button type="button" aria-label="前一天" onClick={() => setContactDate((current) => shiftContactDate(current, -1))}><ChevronLeft /></button>
                 <label><CalendarDays /><span>聯絡簿日期</span><input type="date" max={today} value={contactDate} onChange={(event) => setContactDate(event.target.value || today)} /></label>
