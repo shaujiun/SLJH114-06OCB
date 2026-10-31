@@ -89,15 +89,9 @@ export function filterAssignmentsForContactDate(
   assignments,
   academicTermId,
   contactDate,
-  today = localDateString(),
 ) {
-  if (contactDate === today) {
-    return filterVisibleStudentAssignments(assignments, academicTermId)
-  }
-  return (assignments || []).filter((item) => (
-    item.academicTermId === academicTermId
-    && item.assignmentDate === contactDate
-  ))
+  return filterVisibleStudentAssignments(assignments, academicTermId)
+    .filter((item) => item.assignmentDate <= contactDate)
 }
 
 export function groupStudentAssignments(assignments) {

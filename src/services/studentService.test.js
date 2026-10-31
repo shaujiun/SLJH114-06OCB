@@ -84,7 +84,7 @@ describe('學生聯絡簿資料', () => {
       .toEqual(['open-current'])
   })
 
-  it('今天維持待辦模式，歷史日期顯示當天全部原始作業', () => {
+  it('今天與歷史日期都顯示截至該日仍未完成的作業', () => {
     const assignments = [
       {
         id: 'today-open',
@@ -104,19 +104,60 @@ describe('學生聯絡簿資料', () => {
         assignmentDate: '2026-08-11',
         submittedAt: null,
       },
+      {
+        id: 'future-open',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-08-13',
+        submittedAt: null,
+      },
     ]
     expect(filterAssignmentsForContactDate(
       assignments,
       'term-1',
-      '2026-08-12',
       '2026-08-12',
     ).map((item) => item.id)).toEqual(['today-open', 'past-open'])
     expect(filterAssignmentsForContactDate(
       assignments,
       'term-1',
       '2026-08-11',
-      '2026-08-12',
-    ).map((item) => item.id)).toEqual(['past-submitted', 'past-open'])
+    ).map((item) => item.id)).toEqual(['past-open'])
+  })
+
+  it('相鄰兩日沒有新作業時顯示相同待辦清單', () => {
+    const assignments = [
+      {
+        id: 'older-open',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-10-28',
+        submittedAt: null,
+      },
+      {
+        id: 'october-30-open',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-10-30',
+        submittedAt: null,
+      },
+      {
+        id: 'october-30-submitted',
+        academicTermId: 'term-1',
+        assignmentDate: '2026-10-30',
+        submittedAt: '2026-10-31T08:00:00Z',
+      },
+    ]
+
+    const october30 = filterAssignmentsForContactDate(
+      assignments,
+      'term-1',
+      '2026-10-30',
+    ).map((item) => item.id)
+    const october31 = filterAssignmentsForContactDate(
+      assignments,
+      'term-1',
+      '2026-10-31',
+    ).map((item) => item.id)
+
+    expect(october30).toEqual(['older-open', 'october-30-open'])
+    expect(october31).toEqual(october30)
   })
 
   it('補交提醒在保留期限內顯示，期限後消失，累積遲交不消失', () => {
